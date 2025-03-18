@@ -4,18 +4,18 @@ set -e
 
 echo "Formatting..."
 echo "--- Ruff ---"
-ruff format wavetrain
+ruff format wavetrainer
 echo "--- isort ---"
-isort wavetrain
+isort wavetrainer
 
 echo "Checking..."
 echo "--- Flake8 ---"
-flake8 wavetrain
+flake8 wavetrainer
 echo "--- pylint ---"
-pylint wavetrain
+pylint wavetrainer
 echo "--- mypy ---"
-mypy wavetrain
+mypy wavetrainer
 echo "--- Ruff ---"
-ruff check wavetrain
+ruff check wavetrainer
 echo "--- pyright ---"
-pyright wavetrain
+pyright wavetrainer

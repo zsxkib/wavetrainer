@@ -1,4 +1,4 @@
-# wavetrain
+# wavetrainer
 
 <a href="https://pypi.org/project/wavetrain/">
     <img alt="PyPi" src="https://img.shields.io/pypi/v/wavetrain">
@@ -28,11 +28,11 @@ Python 3.11.6:
 
 ## Raison D'être :thought_balloon:
 
-`wavetrain` aims to split out the various aspects of creating a good model into different composable pieces and searches the space of these different pieces to find an optimal model. This came about after doing code like this multiple times on multiple projects. This is specifically geared towards time series models, validating itself through walk-forward analysis.
+`wavetrainer` aims to split out the various aspects of creating a good model into different composable pieces and searches the space of these different pieces to find an optimal model. This came about after doing code like this multiple times on multiple projects. This is specifically geared towards time series models, validating itself through walk-forward analysis.
 
 ## Architecture :triangular_ruler:
 
-`wavetrain` is an object orientated library. The entities are organised like so:
+`wavetrainer` is an object orientated library. The entities are organised like so:
 
 * **Trainer**: A sklearn compatible object that can fit and predict data.
     * **Reducer**: An object that can reduce the feature space based on heuristics.
@@ -46,7 +46,7 @@ Python 3.11.6:
 
 This is a python package hosted on pypi, so to install simply run the following command:
 
-`pip install wavetrain`
+`pip install wavetrainer`
 
 or install using this local repository:
 
@@ -54,7 +54,7 @@ or install using this local repository:
 
 ## Usage example :eyes:
 
-The use of `wavetrain` is entirely through code due to it being a library. It attempts to hide most of its complexity from the user, so it only has a few functions of relevance in its outward API.
+The use of `wavetrainer` is entirely through code due to it being a library. It attempts to hide most of its complexity from the user, so it only has a few functions of relevance in its outward API.
 
 ### Training
 

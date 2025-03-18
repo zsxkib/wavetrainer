@@ -22,7 +22,7 @@ def install_requires() -> typing.List[str]:
 
 
 setup(
-    name='wavetrain',
+    name='wavetrainer',
     version='0.0.1',
     description='A library for automatically finding the optimal model within feature and hyperparameter space.',
     long_description=long_description,

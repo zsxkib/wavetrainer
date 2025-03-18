@@ -6,7 +6,7 @@ import unittest
 
 import pandas as pd
 
-from wavetrain.trainer import Trainer
+from wavetrainer.trainer import Trainer
 
 
 class TestTrainer(unittest.TestCase):
