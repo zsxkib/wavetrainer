@@ -1,0 +1,11 @@
+pandas>=2.2.3
+optuna>=4.2.1
+scikit-learn>=1.6.1
+feature-engine>=1.8.3
+tqdm>=4.67.1
+numpy>=2.2.3
+scipy>=1.15.2
+catboost>=1.2.7
+venn-abers>=1.4.6
+mapie>=0.9.2
+shapiq>=1.2.2

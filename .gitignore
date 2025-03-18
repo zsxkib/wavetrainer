@@ -169,3 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Custom
+.ruff_cache
+catboost_info
+coverage_html

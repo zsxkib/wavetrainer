@@ -1,0 +1,13 @@
+-r requirements.txt
+ruff==0.9.9
+isort==6.0.1
+flake8==7.1.2
+pylint==3.3.4
+mypy==1.15.0
+pyright==1.1.396
+types-tqdm==4.67.0.20250301
+pandas-stubs==2.2.3.250308
+pytest==8.3.5
+pytest-drop-dup-tests==1.0.0
+pytest-sugar==1.0.0
+pytest-cov==6.0.0
