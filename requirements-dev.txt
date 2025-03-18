@@ -11,3 +11,4 @@ pytest==8.3.5
 pytest-drop-dup-tests==1.0.0
 pytest-sugar==1.0.0
 pytest-cov==6.0.0
+twine==6.1.0
