@@ -1,7 +1,7 @@
 # wavetrainer
 
-<a href="https://pypi.org/project/wavetrain/">
-    <img alt="PyPi" src="https://img.shields.io/pypi/v/wavetrain">
+<a href="https://pypi.org/project/wavetrainer/">
+    <img alt="PyPi" src="https://img.shields.io/pypi/v/wavetrainer">
 </a>
 
 A library for automatically finding the optimal model within feature and hyperparameter space on time series models.
