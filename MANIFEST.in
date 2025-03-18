@@ -1,0 +1,3 @@
+include requirements.txt
+recursive-include wavetrainer *.py
+recursive-include wavetrainer *.csv

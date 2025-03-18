@@ -61,7 +61,7 @@ The use of `wavetrainer` is entirely through code due to it being a library. It 
 To train a model:
 
 ```python
-import wavetrain as wt
+import wavetrainer as wt
 import pandas as pd
 import numpy as np
 import random
@@ -77,8 +77,8 @@ df["Y"] = [random.choice([True, False]) for _ in range(data_size)]
 X = df["X"]
 Y = df["Y"]
 
-wavetrain = wt.create("my_wavetrain")
-wavetrain = wavetrain.fit(X, y=Y)
+wavetrainer = wt.create("my_wavetrain")
+wavetrainer = wavetrainer.fit(X, y=Y)
 ```
 
 This will save it to the folder `my_wavetrain`.
@@ -88,9 +88,9 @@ This will save it to the folder `my_wavetrain`.
 To load a trainer (as well as its composite states):
 
 ```python
-import wavetrain as wt
+import wavetrainer as wt
 
-wavetrain = wt.load("my_wavetrain")
+wavetrainer = wt.load("my_wavetrain")
 ```
 
 ### Predict
@@ -98,11 +98,11 @@ wavetrain = wt.load("my_wavetrain")
 To make a prediction from new data:
 
 ```python
-import wavetrain as wt
+import wavetrainer as wt
 import pandas as pd
 import numpy as np
 
-wavetrain = wt.load("my_wavetrain")
+wavetrainer = wt.load("my_wavetrain")
 data_size = 1
 df = pd.DataFrame(
     np.random.randint(0, 30, size=data_size),
@@ -111,7 +111,7 @@ df = pd.DataFrame(
 )
 X = df["X"]
 
-preds = wavetrain.predict(X)
+preds = wavetrainer.predict(X)
 ```
 
 `preds` will now contain both the predictions and the probabilities associated with those predictions.

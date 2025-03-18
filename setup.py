@@ -23,7 +23,7 @@ def install_requires() -> typing.List[str]:
 
 setup(
     name='wavetrainer',
-    version='0.0.1',
+    version='0.0.2',
     description='A library for automatically finding the optimal model within feature and hyperparameter space.',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -32,7 +32,7 @@ setup(
         'Programming Language :: Python :: 3',
     ],
     keywords='machine-learning, ML, hyperparameter, features',
-    url='https://github.com/8W9aG/wavetrain',
+    url='https://github.com/8W9aG/wavetrainer',
     author='Will Sackfield',
     author_email='will.sackfield@gmail.com',
     license='MIT',
