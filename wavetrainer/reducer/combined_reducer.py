@@ -10,6 +10,7 @@ import pandas as pd
 from .constant_reducer import ConstantReducer
 from .correlation_reducer import CorrelationReducer
 from .duplicate_reducer import DuplicateReducer
+from .nonnumeric_reducer import NonNumericReducer
 from .reducer import Reducer
 
 _COMBINED_REDUCER_FILE = "combined_reducer.json"
@@ -21,7 +22,12 @@ class CombinedReducer(Reducer):
 
     def __init__(self):
         super().__init__()
-        self._reducers = [ConstantReducer(), DuplicateReducer(), CorrelationReducer()]
+        self._reducers = [
+            ConstantReducer(),
+            DuplicateReducer(),
+            CorrelationReducer(),
+            NonNumericReducer(),
+        ]
 
     @classmethod
     def name(cls) -> str:
@@ -44,6 +50,8 @@ class CombinedReducer(Reducer):
                     self._reducers.append(DuplicateReducer())
                 elif reducer_name == CorrelationReducer.name():
                     self._reducers.append(CorrelationReducer())
+                elif reducer_name == NonNumericReducer.name():
+                    self._reducers.append(NonNumericReducer())
         for reducer in self._reducers:
             reducer.load(folder)
 
@@ -67,7 +75,7 @@ class CombinedReducer(Reducer):
         w: pd.Series | None = None,
     ) -> Self:
         for reducer in self._reducers:
-            reducer.fit(df)
+            df = reducer.fit_transform(df)
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:

@@ -47,7 +47,7 @@ class ClassWeights(Weights):
             self._class_weights = {}
             return self
 
-        arr = df.astype(int).to_numpy().flatten().astype(float)
+        arr = y.astype(int).to_numpy().flatten().astype(float)
         unique_vals = np.unique(arr)
         w_arr = compute_class_weight(
             class_weight="balanced", classes=unique_vals, y=arr

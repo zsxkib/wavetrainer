@@ -52,7 +52,9 @@ class Windower(Params, Fit):
         lookback_ratio = self._lookback_ratio
         if lookback_ratio is None:
             raise ValueError("lookback_ratio is null")
-        dt_index = df.index if self._dt_column is None else df[self._dt_column]
+        dt_index = (
+            df.index if self._dt_column is None else df[self._dt_column].to_list()
+        )
         start_idx = dt_index[int(len(df) * lookback_ratio)]
         end_idx = dt_index[-1]
         td = end_idx.to_pydatetime() - start_idx.to_pydatetime()
@@ -66,5 +68,6 @@ class Windower(Params, Fit):
         dt_index = df.index if self._dt_column is None else df[self._dt_column]
         return df[
             dt_index
-            >= dt_index[-1].to_pydatetime() - datetime.timedelta(seconds=lookback)
+            >= dt_index.to_list()[-1].to_pydatetime()
+            - datetime.timedelta(seconds=lookback)
         ]

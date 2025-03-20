@@ -252,14 +252,16 @@ class Trainer(Fit):
             start_validation_index = (
                 dt_index[-int(len(dt_index) * self._validation_size) - 1]
                 if isinstance(self._validation_size, float)
-                else dt_index[dt_index >= self._validation_size][0]
+                else dt_index[
+                    dt_index >= (dt_index.to_list()[-1] - self._validation_size)
+                ].to_list()[0]
             )
             test_df = df[dt_index < start_validation_index]
             test_dt_index = (
                 test_df.index if self._dt_column is None else test_df[self._dt_column]
             )
             start_test_index = (
-                test_dt_index[-int(len(test_dt_index) * self._test_size)]
+                test_dt_index.to_list()[-int(len(test_dt_index) * self._test_size)]
                 if isinstance(self._test_size, float)
                 else test_dt_index[test_dt_index >= self._test_size][0]
             )
