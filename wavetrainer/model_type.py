@@ -1,17 +1,17 @@
 """An enum to define the model type."""
 
-from enum import Enum
+from enum import StrEnum, auto
 
 import pandas as pd
 
 
-class ModelType(Enum):
+class ModelType(StrEnum):
     """The type of model being run."""
 
-    BINARY = 1
-    REGRESSION = 2
-    BINNED_BINARY = 3
-    MULTI_CLASSIFICATION = 4
+    BINARY = auto()
+    REGRESSION = auto()
+    BINNED_BINARY = auto()
+    MULTI_CLASSIFICATION = auto()
 
 
 def determine_model_type(y: pd.Series | pd.DataFrame) -> ModelType:

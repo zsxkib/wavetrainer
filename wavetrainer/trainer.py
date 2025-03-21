@@ -11,7 +11,7 @@ from typing import Self
 import optuna
 import pandas as pd
 import tqdm
-from sklearn.metrics import accuracy_score, f1_score  # type: ignore
+from sklearn.metrics import f1_score, mean_absolute_error  # type: ignore
 
 from .calibrator.calibrator_router import CalibratorRouter
 from .exceptions import WavetrainException
@@ -215,7 +215,7 @@ class Trainer(Fit):
                     model.set_options(trial)
 
                     # Train
-                    selector = Selector(model, len(x_train.columns.values))
+                    selector = Selector(model)
                     selector.set_options(trial)
                     selector.fit(x_train, y=y_train, w=w)
                     x_train = selector.transform(x_train)
@@ -243,7 +243,7 @@ class Trainer(Fit):
                     y_pred = model.transform(x_test)
                     y_pred = calibrator.transform(y_pred)
                     if determine_model_type(y_series) == ModelType.REGRESSION:
-                        return accuracy_score(y_test, y_pred[[PREDICTION_COLUMN]])
+                        return mean_absolute_error(y_test, y_pred[[PREDICTION_COLUMN]])
                     return f1_score(y_test, y_pred[[PREDICTION_COLUMN]])
                 except WavetrainException as exc:
                     logging.warning(str(exc))
@@ -286,9 +286,15 @@ class Trainer(Fit):
             train_len = len(df[dt_index < start_test_index])
             test_len = len(df.loc[start_test_index:start_validation_index])
 
+            last_processed_dt = None
             for count, test_idx in tqdm.tqdm(
-                enumerate(df[dt_index >= start_test_index].index)
+                enumerate(test_dt_index[test_dt_index >= start_test_index])
             ):
+                if (
+                    last_processed_dt is not None
+                    and test_idx < last_processed_dt + self._walkforward_timedelta
+                ):
+                    continue
                 test_dt = test_idx.to_pydatetime()
                 found = False
                 for trial in study.trials:
@@ -373,7 +379,7 @@ class Trainer(Fit):
                 model = ModelRouter()
                 model.load(folder)
 
-                selector = Selector(model, len(df.columns.values))
+                selector = Selector(model)
                 selector.load(folder)
 
                 calibrator = CalibratorRouter(model)

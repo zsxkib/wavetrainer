@@ -49,12 +49,17 @@ class MAPIECalibrator(Calibrator):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        alpha = [0.05, 0.32]
-        _, y_pis = self._mapie.predict(df, alpha=alpha)
-        df = pd.DataFrame(data=None, index=df.index)
-        for i in range(y_pis.shape[1]):
-            for ii in range(y_pis.shape[2]):
-                df[f"{PROBABILITY_COLUMN_PREFIX}{alpha[i]}_{ii == 1}"] = (
-                    y_pis[:, i, ii].flatten().tolist()
-                )
+        alpha = []
+        for potential_alpha in [0.05, 0.32]:
+            if len(df) > int(1.0 / potential_alpha):
+                alpha.append(potential_alpha)
+        if alpha:
+            _, y_pis = self._mapie.predict(df, alpha=alpha)
+            for i in range(y_pis.shape[1]):
+                if i >= len(alpha):
+                    continue
+                for ii in range(y_pis.shape[2]):
+                    alpha_val = alpha[i]
+                    values = y_pis[:, i, ii].flatten().tolist()
+                    df[f"{PROBABILITY_COLUMN_PREFIX}{alpha_val}_{ii == 1}"] = values
         return df

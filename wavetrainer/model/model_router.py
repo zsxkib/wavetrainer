@@ -37,10 +37,17 @@ class ModelRouter(Model):
             raise ValueError("model is null")
         return model.estimator
 
+    def pre_fit(self, y: pd.Series | pd.DataFrame | None):
+        model = self._model
+        if model is None:
+            raise ValueError("model is null")
+        model.pre_fit(y)
+
     def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         self._model = _MODELS[
             trial.suggest_categorical("model", list(_MODELS.keys()))
         ]()
+        self._model.set_options(trial)
 
     def load(self, folder: str) -> None:
         with open(os.path.join(folder, _MODEL_ROUTER_FILE), encoding="utf8") as handle:

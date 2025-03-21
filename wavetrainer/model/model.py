@@ -2,6 +2,8 @@
 
 from typing import Any
 
+import pandas as pd
+
 from ..fit import Fit
 from ..params import Params
 
@@ -21,3 +23,7 @@ class Model(Params, Fit):
     def estimator(self) -> Any:
         """The estimator backing the model."""
         raise NotImplementedError("estimator not implemented in parent class.")
+
+    def pre_fit(self, y: pd.Series | pd.DataFrame | None) -> None:
+        """A call to make sure the model is prepared for the target type."""
+        raise NotImplementedError("pre_fit not implemented in parent class.")
