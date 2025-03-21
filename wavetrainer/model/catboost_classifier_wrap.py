@@ -11,5 +11,5 @@ class CatBoostClassifierWrapper(CatBoostClassifier):
     """A wrapper for the catboost classifier."""
 
     def fit(self, *args, **kwargs):
-        kwargs = handle_fit_kwargs(*args, **kwargs)
+        args, kwargs = handle_fit_kwargs(*args, **kwargs)
         return super().fit(*args, **kwargs)

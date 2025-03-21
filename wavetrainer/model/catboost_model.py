@@ -10,7 +10,8 @@ from catboost import CatBoost, Pool  # type: ignore
 
 from ..model_type import ModelType, determine_model_type
 from .catboost_classifier_wrap import CatBoostClassifierWrapper
-from .catboost_kwargs import EVAL_SET, ORIGINAL_X
+from .catboost_kwargs import (CAT_FEATURES_ARG_KEY, EVAL_SET_ARG_KEY,
+                              ORIGINAL_X_ARG_KEY)
 from .catboost_regressor_wrap import CatBoostRegressorWrapper
 from .model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
 
@@ -66,9 +67,9 @@ class CatboostModel(Model):
             raise ValueError("y is null.")
         self._model_type = determine_model_type(y)
         return {
-            EVAL_SET: (eval_x, eval_y),
-            "cat_features": df.select_dtypes(include="category").columns.tolist(),
-            ORIGINAL_X: df,
+            EVAL_SET_ARG_KEY: (eval_x, eval_y),
+            CAT_FEATURES_ARG_KEY: df.select_dtypes(include="category").columns.tolist(),
+            ORIGINAL_X_ARG_KEY: df,
         }
 
     def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:

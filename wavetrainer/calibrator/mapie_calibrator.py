@@ -60,7 +60,7 @@ class MAPIECalibrator(Calibrator):
         try:
             alpha = []
             for potential_alpha in [0.05, 0.32]:
-                if len(df) > int(1.0 / potential_alpha):
+                if len(df) > int(1.0 / potential_alpha) + 1:
                     alpha.append(potential_alpha)
             if alpha:
                 _, y_pis = self._mapie.predict(df, alpha=alpha)

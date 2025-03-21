@@ -20,10 +20,11 @@ class TestTrainer(unittest.TestCase):
                 data={
                     "column1": x_data,
                     "column2": [(x * random.random()) + random.random() for x in x_data],
-                    "column3": [(x / random.random()) - random.random() for x in x_data],
+                    "column3": [int(((x / random.random()) - random.random()) * 1000.0) for x in x_data],
                 },
                 index=x_index,
             )
+            df["column3"] = df["column3"].astype('category')
             y = pd.DataFrame(
                 data={
                     "y": [x % 2 == 0 for x in x_data],
