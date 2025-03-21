@@ -11,7 +11,7 @@ from typing import Self
 import optuna
 import pandas as pd
 import tqdm
-from sklearn.metrics import f1_score, mean_absolute_error  # type: ignore
+from sklearn.metrics import f1_score, r2_score  # type: ignore
 
 from .calibrator.calibrator_router import CalibratorRouter
 from .exceptions import WavetrainException
@@ -158,6 +158,8 @@ class Trainer(Fit):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         """Perform a train on the data to fit to the targets."""
         if y is None:
@@ -217,10 +219,12 @@ class Trainer(Fit):
                     # Train
                     selector = Selector(model)
                     selector.set_options(trial)
-                    selector.fit(x_train, y=y_train, w=w)
+                    selector.fit(x_train, y=y_train, w=w, eval_x=x_test, eval_y=y_test)
                     x_train = selector.transform(x_train)
                     x_test = selector.transform(x_test)
-                    x_pred = model.fit_transform(x_train, y=y_train)
+                    x_pred = model.fit_transform(
+                        x_train, y=y_train, w=w, eval_x=x_test, eval_y=y_test
+                    )
 
                     # Calibrate
                     calibrator = CalibratorRouter(model)
@@ -243,8 +247,8 @@ class Trainer(Fit):
                     y_pred = model.transform(x_test)
                     y_pred = calibrator.transform(y_pred)
                     if determine_model_type(y_series) == ModelType.REGRESSION:
-                        return mean_absolute_error(y_test, y_pred[[PREDICTION_COLUMN]])
-                    return f1_score(y_test, y_pred[[PREDICTION_COLUMN]])
+                        return float(r2_score(y_test, y_pred[[PREDICTION_COLUMN]]))
+                    return float(f1_score(y_test, y_pred[[PREDICTION_COLUMN]]))
                 except WavetrainException as exc:
                     logging.warning(str(exc))
                     return -1.0

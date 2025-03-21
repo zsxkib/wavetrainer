@@ -15,6 +15,8 @@ from .reducer import Reducer
 class BaseSelectorReducer(Reducer):
     """A class that uses the base selector from the feature engine."""
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+
     def __init__(self, base_selector: BaseSelector, file_name: str) -> None:
         super().__init__()
         self._base_selector = base_selector
@@ -40,6 +42,8 @@ class BaseSelectorReducer(Reducer):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         try:
             self._base_selector.fit(df)  # type: ignore

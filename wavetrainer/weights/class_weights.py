@@ -14,6 +14,8 @@ from .weights import WEIGHTS_COLUMN, Weights
 class ClassWeights(Weights):
     """Class weight class."""
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+
     _class_weights: dict[Any, float]
 
     def __init__(self) -> None:
@@ -39,6 +41,8 @@ class ClassWeights(Weights):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         if not isinstance(y, pd.Series):
             raise ValueError("y is not a series.")

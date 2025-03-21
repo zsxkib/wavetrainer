@@ -24,6 +24,8 @@ _CALIBRATORS = {
 class CalibratorRouter(Calibrator):
     """A router that routes to a different calibrator class."""
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+
     _calibrator: Calibrator | None
 
     def __init__(self, model: Model):
@@ -66,7 +68,10 @@ class CalibratorRouter(Calibrator):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
+        # pylint: disable=no-else-return
         calibrator: Calibrator | None = None
         if determine_model_type(df) == ModelType.REGRESSION:
             calibrator = MAPIECalibrator(self._model)

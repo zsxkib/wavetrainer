@@ -26,6 +26,8 @@ _WEIGHTS = {
 class WeightsRouter(Weights):
     """A router that routes to a different weights class."""
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+
     _weights: Weights | None
 
     def __init__(self) -> None:
@@ -71,6 +73,8 @@ class WeightsRouter(Weights):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         return self
 

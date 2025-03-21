@@ -24,7 +24,6 @@ Python 3.11.6:
 - [catboost](https://catboost.ai/)
 - [venn-abers](https://github.com/ip200/venn-abers)
 - [mapie](https://mapie.readthedocs.io/en/stable/)
-- [shapiq](https://github.com/mmschlk/shapiq)
 
 ## Raison D'être :thought_balloon:
 

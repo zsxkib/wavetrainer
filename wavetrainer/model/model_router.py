@@ -20,6 +20,8 @@ _MODELS = {
 class ModelRouter(Model):
     """A router that routes to a different weights class."""
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+
     _model: Model | None
 
     def __init__(self) -> None:
@@ -37,11 +39,17 @@ class ModelRouter(Model):
             raise ValueError("model is null")
         return model.estimator
 
-    def pre_fit(self, y: pd.Series | pd.DataFrame | None):
+    def pre_fit(
+        self,
+        df: pd.DataFrame,
+        y: pd.Series | pd.DataFrame | None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
+    ) -> dict[str, Any]:
         model = self._model
         if model is None:
             raise ValueError("model is null")
-        model.pre_fit(y)
+        return model.pre_fit(df, y=y, eval_x=eval_x, eval_y=eval_y)
 
     def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         self._model = _MODELS[
@@ -76,11 +84,13 @@ class ModelRouter(Model):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         model = self._model
         if model is None:
             raise ValueError("model is null")
-        model.fit(df, y=y, w=w)
+        model.fit(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:

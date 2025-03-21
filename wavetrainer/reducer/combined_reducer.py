@@ -20,6 +20,8 @@ _REDUCERS_KEY = "reducers"
 class CombinedReducer(Reducer):
     """A reducer that combines a series of reducers."""
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+
     def __init__(self):
         super().__init__()
         self._reducers = [
@@ -73,6 +75,8 @@ class CombinedReducer(Reducer):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         for reducer in self._reducers:
             df = reducer.fit_transform(df)

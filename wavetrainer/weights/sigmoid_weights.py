@@ -13,7 +13,7 @@ from .weights import WEIGHTS_COLUMN, Weights
 class SigmoidWeights(Weights):
     """Sigmoid weight class."""
 
-    # pylint: disable=duplicate-code
+    # pylint: disable=duplicate-code,too-many-positional-arguments,too-many-arguments
 
     @classmethod
     def name(cls) -> str:
@@ -34,6 +34,8 @@ class SigmoidWeights(Weights):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         return self
 

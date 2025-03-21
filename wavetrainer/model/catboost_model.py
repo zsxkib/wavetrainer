@@ -6,10 +6,12 @@ from typing import Any, Self
 
 import optuna
 import pandas as pd
-from catboost import CatBoostClassifier  # type: ignore
-from catboost import CatBoost, CatBoostRegressor, Pool
+from catboost import CatBoost, Pool  # type: ignore
 
 from ..model_type import ModelType, determine_model_type
+from .catboost_classifier_wrap import CatBoostClassifierWrapper
+from .catboost_kwargs import EVAL_SET, ORIGINAL_X
+from .catboost_regressor_wrap import CatBoostRegressorWrapper
 from .model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
 
 _MODEL_FILENAME = "model.cbm"
@@ -24,6 +26,8 @@ _MODEL_TYPE_KEY = "model_type"
 
 class CatboostModel(Model):
     """A class that uses Catboost as a model."""
+
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
 
     _catboost: CatBoost | None
     _iterations: None | int
@@ -51,10 +55,21 @@ class CatboostModel(Model):
     def estimator(self) -> Any:
         return self._provide_catboost()
 
-    def pre_fit(self, y: pd.Series | pd.DataFrame | None):
+    def pre_fit(
+        self,
+        df: pd.DataFrame,
+        y: pd.Series | pd.DataFrame | None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
+    ):
         if y is None:
             raise ValueError("y is null.")
         self._model_type = determine_model_type(y)
+        return {
+            EVAL_SET: (eval_x, eval_y),
+            "cat_features": df.select_dtypes(include="category").columns.tolist(),
+            ORIGINAL_X: df,
+        }
 
     def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         self._iterations = trial.suggest_int(_ITERATIONS_KEY, 100, 10000)
@@ -102,6 +117,8 @@ class CatboostModel(Model):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         if y is None:
             raise ValueError("y is null.")
@@ -113,11 +130,16 @@ class CatboostModel(Model):
             label=y,
             weight=w,
         )
+        eval_pool = Pool(
+            eval_x,
+            label=eval_y,
+        )
         catboost.fit(
             train_pool,
             early_stopping_rounds=100,
             verbose=False,
             metric_period=100,
+            eval_set=eval_pool,
         )
         return self
 
@@ -142,7 +164,7 @@ class CatboostModel(Model):
         if catboost is None:
             match self._model_type:
                 case ModelType.BINARY:
-                    catboost = CatBoostClassifier(
+                    catboost = CatBoostClassifierWrapper(
                         iterations=self._iterations,
                         learning_rate=self._learning_rate,
                         depth=self._depth,
@@ -152,7 +174,7 @@ class CatboostModel(Model):
                         metric_period=100,
                     )
                 case ModelType.REGRESSION:
-                    catboost = CatBoostRegressor(
+                    catboost = CatBoostRegressorWrapper(
                         iterations=self._iterations,
                         learning_rate=self._learning_rate,
                         depth=self._depth,
@@ -162,7 +184,7 @@ class CatboostModel(Model):
                         metric_period=100,
                     )
                 case ModelType.BINNED_BINARY:
-                    catboost = CatBoostClassifier(
+                    catboost = CatBoostClassifierWrapper(
                         iterations=self._iterations,
                         learning_rate=self._learning_rate,
                         depth=self._depth,
@@ -172,7 +194,7 @@ class CatboostModel(Model):
                         metric_period=100,
                     )
                 case ModelType.MULTI_CLASSIFICATION:
-                    catboost = CatBoostClassifier(
+                    catboost = CatBoostClassifierWrapper(
                         iterations=self._iterations,
                         learning_rate=self._learning_rate,
                         depth=self._depth,

@@ -18,6 +18,8 @@ _LOOKBACK_KEY = "lookback"
 class Windower(Params, Fit):
     """The windower class."""
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+
     _lookback_ratio: float | None
 
     def __init__(self, dt_column: str | None):
@@ -48,6 +50,8 @@ class Windower(Params, Fit):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         lookback_ratio = self._lookback_ratio
         if lookback_ratio is None:

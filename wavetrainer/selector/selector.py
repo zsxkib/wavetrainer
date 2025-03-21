@@ -7,6 +7,7 @@ from typing import Self
 import joblib  # type: ignore
 import optuna
 import pandas as pd
+import sklearn  # type: ignore
 from sklearn.feature_selection import RFE  # type: ignore
 
 from ..fit import Fit
@@ -18,6 +19,8 @@ _SELECTOR_FILE = "selector.joblib"
 
 class Selector(Params, Fit):
     """The selector class."""
+
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
 
     _selector: RFE | None
 
@@ -43,8 +46,11 @@ class Selector(Params, Fit):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
-        self._model.pre_fit(y)
+        sklearn.set_config(enable_metadata_routing=False)
+        model_kwargs = self._model.pre_fit(df, y=y, eval_x=eval_x, eval_y=eval_y)
         if not isinstance(y, pd.Series):
             raise ValueError("y is not a series.")
         n_features_to_select = max(1, int(len(df.columns) * self._feature_ratio))
@@ -57,7 +63,7 @@ class Selector(Params, Fit):
             ),
         )
         try:
-            self._selector.fit(df, y=y, sample_weight=w)
+            self._selector.fit(df, y=y, sample_weight=w, **model_kwargs)
         except ValueError as exc:
             # Catch issues with 1 feature as a reduction target.
             logging.warning(str(exc))

@@ -13,6 +13,8 @@ from .weights_router import WeightsRouter
 class CombinedWeights(Weights):
     """A weights class that combines multiple weights."""
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+
     def __init__(self) -> None:
         super().__init__()
         self._weights = [WeightsRouter(), ClassWeights()]
@@ -38,6 +40,8 @@ class CombinedWeights(Weights):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         for weights in self._weights:
             weights.fit(df, y=y)

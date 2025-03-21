@@ -2,5 +2,5 @@
 
 from .create import create
 
-__VERSION__ = "0.0.5"
+__VERSION__ = "0.0.6"
 __all__ = ("create",)

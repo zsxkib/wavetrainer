@@ -17,6 +17,8 @@ _CALIBRATOR_FILENAME = "vennabers.joblib"
 class VennabersCalibrator(Calibrator):
     """A class that uses venn abers as a calibrator."""
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+
     def __init__(self, model: Model):
         super().__init__(model)
         self._vennabers = VennAbers()
@@ -39,6 +41,8 @@ class VennabersCalibrator(Calibrator):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         vennabers = self._vennabers
         if vennabers is None:

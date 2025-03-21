@@ -11,6 +11,8 @@ from .reducer import Reducer
 class NonNumericReducer(Reducer):
     """A class that removes non numeric columns from a dataframe."""
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
+
     @classmethod
     def name(cls) -> str:
         return "nonnumeric"
@@ -29,6 +31,8 @@ class NonNumericReducer(Reducer):
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None = None,
         w: pd.Series | None = None,
+        eval_x: pd.DataFrame | None = None,
+        eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         return self
 
