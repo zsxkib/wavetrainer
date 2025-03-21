@@ -123,6 +123,8 @@ class CatboostModel(Model):
     ) -> Self:
         if y is None:
             raise ValueError("y is null.")
+        if eval_x is None:
+            raise ValueError("eval_x is null.")
         self._model_type = determine_model_type(y)
         catboost = self._provide_catboost()
 
@@ -130,10 +132,12 @@ class CatboostModel(Model):
             df,
             label=y,
             weight=w,
+            cat_features=df.select_dtypes(include="category").columns.tolist(),
         )
         eval_pool = Pool(
             eval_x,
             label=eval_y,
+            cat_features=eval_x.select_dtypes(include="category").columns.tolist(),
         )
         catboost.fit(
             train_pool,
