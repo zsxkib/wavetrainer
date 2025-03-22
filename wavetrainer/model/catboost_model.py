@@ -149,7 +149,10 @@ class CatboostModel(Model):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        pred_pool = Pool(df)
+        pred_pool = Pool(
+            df,
+            cat_features=df.select_dtypes(include="category").columns.tolist(),
+        )
         catboost = self._provide_catboost()
         pred = catboost.predict(pred_pool)
         df = pd.DataFrame(
