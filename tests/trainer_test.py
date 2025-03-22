@@ -37,3 +37,25 @@ class TestTrainer(unittest.TestCase):
             df = trainer.transform(df)
             print("df:")
             print(df)
+
+    def test_trainer_dt_column(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            trainer = Trainer(tmpdir, walkforward_timedelta=datetime.timedelta(days=7), trials=1, dt_column="dt_column")
+            x_data = [i for i in range(100)]
+            x_index = [datetime.datetime(2022, 1, 1) + datetime.timedelta(days=i) for i in range(len(x_data))]
+            df = pd.DataFrame(
+                data={
+                    "column1": x_data,
+                    "dt_column": x_index,
+                },
+            )
+            y = pd.DataFrame(
+                data={
+                    "y": [x % 2 == 0 for x in x_data],
+                },
+                index=df.index,
+            )
+            trainer.fit(df, y=y)
+            df = trainer.transform(df)
+            print("df:")
+            print(df)

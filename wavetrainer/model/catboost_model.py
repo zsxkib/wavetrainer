@@ -23,12 +23,13 @@ _DEPTH_KEY = "depth"
 _L2_LEAF_REG_KEY = "l2_leaf_reg"
 _BOOSTING_TYPE_KEY = "boosting_type"
 _MODEL_TYPE_KEY = "model_type"
+_EARLY_STOPPING_ROUNDS = "early_stopping_rounds"
 
 
 class CatboostModel(Model):
     """A class that uses Catboost as a model."""
 
-    # pylint: disable=too-many-positional-arguments,too-many-arguments
+    # pylint: disable=too-many-positional-arguments,too-many-arguments,too-many-instance-attributes
 
     _catboost: CatBoost | None
     _iterations: None | int
@@ -37,6 +38,7 @@ class CatboostModel(Model):
     _l2_leaf_reg: None | float
     _boosting_type: None | str
     _model_type: None | ModelType
+    _early_stopping_rounds: None | int
 
     @classmethod
     def name(cls) -> str:
@@ -51,6 +53,7 @@ class CatboostModel(Model):
         self._l2_leaf_reg = None
         self._boosting_type = None
         self._model_type = None
+        self._early_stopping_rounds = None
 
     @property
     def estimator(self) -> Any:
@@ -80,6 +83,9 @@ class CatboostModel(Model):
         self._boosting_type = trial.suggest_categorical(
             _BOOSTING_TYPE_KEY, ["Ordered", "Plain"]
         )
+        self._early_stopping_rounds = trial.suggest_int(
+            _EARLY_STOPPING_ROUNDS, 10, 1000
+        )
 
     def load(self, folder: str) -> None:
         with open(
@@ -92,6 +98,7 @@ class CatboostModel(Model):
             self._l2_leaf_reg = params[_L2_LEAF_REG_KEY]
             self._boosting_type = params[_BOOSTING_TYPE_KEY]
             self._model_type = ModelType(params[_MODEL_TYPE_KEY])
+            self._early_stopping_rounds = params[_EARLY_STOPPING_ROUNDS]
         catboost = self._provide_catboost()
         catboost.load_model(os.path.join(folder, _MODEL_FILENAME))
 
@@ -107,6 +114,7 @@ class CatboostModel(Model):
                     _L2_LEAF_REG_KEY: self._l2_leaf_reg,
                     _BOOSTING_TYPE_KEY: self._boosting_type,
                     _MODEL_TYPE_KEY: str(self._model_type),
+                    _EARLY_STOPPING_ROUNDS: self._early_stopping_rounds,
                 },
                 handle,
             )
@@ -141,7 +149,7 @@ class CatboostModel(Model):
         )
         catboost.fit(
             train_pool,
-            early_stopping_rounds=100,
+            early_stopping_rounds=self._early_stopping_rounds,
             verbose=False,
             metric_period=100,
             eval_set=eval_pool,
@@ -178,7 +186,7 @@ class CatboostModel(Model):
                         depth=self._depth,
                         l2_leaf_reg=self._l2_leaf_reg,
                         boosting_type=self._boosting_type,
-                        early_stopping_rounds=100,
+                        early_stopping_rounds=self._early_stopping_rounds,
                         metric_period=100,
                     )
                 case ModelType.REGRESSION:
@@ -188,7 +196,7 @@ class CatboostModel(Model):
                         depth=self._depth,
                         l2_leaf_reg=self._l2_leaf_reg,
                         boosting_type=self._boosting_type,
-                        early_stopping_rounds=100,
+                        early_stopping_rounds=self._early_stopping_rounds,
                         metric_period=100,
                     )
                 case ModelType.BINNED_BINARY:
@@ -198,7 +206,7 @@ class CatboostModel(Model):
                         depth=self._depth,
                         l2_leaf_reg=self._l2_leaf_reg,
                         boosting_type=self._boosting_type,
-                        early_stopping_rounds=100,
+                        early_stopping_rounds=self._early_stopping_rounds,
                         metric_period=100,
                     )
                 case ModelType.MULTI_CLASSIFICATION:
@@ -208,7 +216,7 @@ class CatboostModel(Model):
                         depth=self._depth,
                         l2_leaf_reg=self._l2_leaf_reg,
                         boosting_type=self._boosting_type,
-                        early_stopping_rounds=100,
+                        early_stopping_rounds=self._early_stopping_rounds,
                         metric_period=100,
                     )
             self._catboost = catboost

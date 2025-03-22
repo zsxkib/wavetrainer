@@ -165,7 +165,11 @@ class Trainer(Fit):
         if y is None:
             return self
 
-        dt_index = df.index if self._dt_column is None else df[self._dt_column]
+        dt_index = (
+            df.index
+            if self._dt_column is None
+            else pd.DatetimeIndex(pd.to_datetime(df[self._dt_column]))
+        )
 
         def _fit_column(y_series: pd.Series):
             column_dir = os.path.join(self._folder, str(y_series.name))
@@ -184,10 +188,10 @@ class Trainer(Fit):
                 trial.set_user_attr(_IDX_USR_ATTR_KEY, split_idx.isoformat())
 
                 train_dt_index = dt_index[: len(x)]
-                x_train = x[train_dt_index < split_idx]
-                x_test = x[train_dt_index >= split_idx]
-                y_train = y_series[train_dt_index < split_idx]
-                y_test = y_series[train_dt_index >= split_idx]
+                x_train = x[train_dt_index < split_idx]  # type: ignore
+                x_test = x[train_dt_index >= split_idx]  # type: ignore
+                y_train = y_series[train_dt_index < split_idx]  # type: ignore
+                y_test = y_series[train_dt_index >= split_idx]  # type: ignore
 
                 try:
                     # Window the data
@@ -250,14 +254,15 @@ class Trainer(Fit):
                         return float(r2_score(y_test, y_pred[[PREDICTION_COLUMN]]))
                     return float(f1_score(y_test, y_pred[[PREDICTION_COLUMN]]))
                 except WavetrainException as exc:
+                    logging.warning("WE DID NOT END UP TRAINING ANYTHING!!!!!")
                     logging.warning(str(exc))
                     return -1.0
 
             start_validation_index = (
-                dt_index[-int(len(dt_index) * self._validation_size) - 1]
+                dt_index.to_list()[-int(len(dt_index) * self._validation_size) - 1]
                 if isinstance(self._validation_size, float)
                 else dt_index[
-                    dt_index >= (dt_index.to_list()[-1] - self._validation_size)
+                    dt_index >= (dt_index.to_list()[-1] - self._validation_size)  # type: ignore
                 ].to_list()[0]
             )
             test_df = df[dt_index < start_validation_index]
@@ -288,7 +293,12 @@ class Trainer(Fit):
                 )
 
             train_len = len(df[dt_index < start_test_index])
-            test_len = len(df.loc[start_test_index:start_validation_index])
+            test_len = len(
+                dt_index[
+                    (dt_index >= start_test_index)
+                    & (dt_index <= start_validation_index)
+                ]
+            )
 
             last_processed_dt = None
             for count, test_idx in tqdm.tqdm(
@@ -341,7 +351,11 @@ class Trainer(Fit):
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """Predict the expected values of the data."""
         feature_columns = df.columns.values
-        dt_index = df.index if self._dt_column is None else df[self._dt_column]
+        dt_index = (
+            df.index
+            if self._dt_column is None
+            else pd.DatetimeIndex(pd.to_datetime(df[self._dt_column]))
+        )
 
         for column in os.listdir(self._folder):
             column_path = os.path.join(self._folder, column)
@@ -353,6 +367,8 @@ class Trainer(Fit):
                 if not os.path.isdir(date_path):
                     continue
                 dates.append(datetime.datetime.fromisoformat(date_str))
+            if not dates:
+                raise ValueError(f"no dates found for {column}.")
             bins: list[datetime.datetime] = sorted(
                 [dt_index.min().to_pydatetime()]
                 + dates
@@ -371,7 +387,12 @@ class Trainer(Fit):
                 column: str,
                 dates: list[datetime.datetime],
             ) -> pd.DataFrame:
-                filtered_dates = [x for x in dates if x < group.index.max()]
+                group_dt_index = (
+                    group.index
+                    if self._dt_column is None
+                    else pd.DatetimeIndex(pd.to_datetime(group[self._dt_column]))
+                )
+                filtered_dates = [x for x in dates if x < group_dt_index.max()]
                 if not filtered_dates:
                     filtered_dates = [dates[-1]]
                 date_str = dates[-1].isoformat()

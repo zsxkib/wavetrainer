@@ -19,3 +19,7 @@ class CorrelationReducer(BaseSelectorReducer):
     @classmethod
     def name(cls) -> str:
         return "correlation"
+
+    @classmethod
+    def should_raise(cls) -> bool:
+        return False

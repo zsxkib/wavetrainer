@@ -27,8 +27,8 @@ class CombinedReducer(Reducer):
         self._reducers = [
             ConstantReducer(),
             DuplicateReducer(),
-            CorrelationReducer(),
             NonNumericReducer(),
+            CorrelationReducer(),
         ]
 
     @classmethod

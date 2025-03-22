@@ -1,5 +1,6 @@
 """A reducer that uses a base selector from the feature engine."""
 
+import logging
 import os
 from typing import Self
 
@@ -26,6 +27,11 @@ class BaseSelectorReducer(Reducer):
     def name(cls) -> str:
         raise NotImplementedError("name not implemented in parent class.")
 
+    @classmethod
+    def should_raise(cls) -> bool:
+        """Whether the class should raise its exception if it encounters it."""
+        return True
+
     def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         pass
 
@@ -45,11 +51,17 @@ class BaseSelectorReducer(Reducer):
         eval_x: pd.DataFrame | None = None,
         eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
+        if len(df.columns) <= 1:
+            return self
         try:
             self._base_selector.fit(df)  # type: ignore
         except ValueError as exc:
-            raise WavetrainException() from exc
+            logging.warning(str(exc))
+            if self.should_raise():
+                raise WavetrainException() from exc
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        if len(df.columns) <= 1:
+            return df
         return self._base_selector.transform(df)

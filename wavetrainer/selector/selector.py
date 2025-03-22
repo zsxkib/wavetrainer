@@ -53,6 +53,8 @@ class Selector(Params, Fit):
         model_kwargs = self._model.pre_fit(df, y=y, eval_x=eval_x, eval_y=eval_y)
         if not isinstance(y, pd.Series):
             raise ValueError("y is not a series.")
+        if len(df.columns) <= 1:
+            return self
         n_features_to_select = max(1, int(len(df.columns) * self._feature_ratio))
         self._selector = RFE(
             self._model.estimator,
@@ -70,6 +72,8 @@ class Selector(Params, Fit):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        if len(df.columns) <= 1:
+            return df
         selector = self._selector
         if selector is None:
             raise ValueError("selector is null.")
