@@ -1,5 +1,7 @@
 """A function for creating a new trainer."""
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+
 import datetime
 
 from .trainer import Trainer
@@ -11,6 +13,7 @@ def create(
     test_size: float | datetime.timedelta | None = None,
     validation_size: float | datetime.timedelta | None = None,
     dt_column: str | None = None,
+    max_train_timeout: datetime.timedelta | None = None,
 ) -> Trainer:
     """Create a trainer."""
     return Trainer(
@@ -19,4 +22,5 @@ def create(
         test_size=test_size,
         validation_size=validation_size,
         dt_column=dt_column,
+        max_train_timeout=max_train_timeout,
     )

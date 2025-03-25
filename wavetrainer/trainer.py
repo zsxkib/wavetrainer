@@ -51,6 +51,7 @@ class Trainer(Fit):
         test_size: float | datetime.timedelta | None = None,
         validation_size: float | datetime.timedelta | None = None,
         dt_column: str | None = None,
+        max_train_timeout: datetime.timedelta | None = None,
     ):
         tqdm.tqdm.pandas()
 
@@ -137,6 +138,7 @@ class Trainer(Fit):
         self._test_size = test_size
         self._validation_size = validation_size
         self._dt_column = dt_column
+        self._max_train_timeout = max_train_timeout
 
     def _provide_study(self, column: str) -> optuna.Study:
         storage_name = f"sqlite:///{self._folder}/{column}/{_STUDYDB_FILENAME}"
@@ -289,7 +291,12 @@ class Trainer(Fit):
                 initial_trials = max(self._trials - len(study.trials), 0)
             if initial_trials > 0:
                 study.optimize(
-                    test_objective, n_trials=initial_trials, show_progress_bar=True
+                    test_objective,
+                    n_trials=initial_trials,
+                    show_progress_bar=True,
+                    timeout=None
+                    if self._max_train_timeout is None
+                    else self._max_train_timeout.total_seconds(),
                 )
 
             train_len = len(df[dt_index < start_test_index])
@@ -336,6 +343,9 @@ class Trainer(Fit):
                             validate_objctive, idx=test_idx, series=test_series
                         ),
                         n_trials=1,
+                        timeout=None
+                        if self._max_train_timeout is None
+                        else self._max_train_timeout.total_seconds(),
                     )
 
                 _fit(study.best_trial, test_df, test_series, True, test_idx)
