@@ -41,7 +41,7 @@ _DT_COLUMN_KEY = "dt_column"
 class Trainer(Fit):
     """A class for training and predicting from an array of data."""
 
-    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-statements,too-many-locals,too-many-branches
+    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-statements,too-many-locals,too-many-branches,too-many-instance-attributes
 
     def __init__(
         self,
@@ -52,6 +52,7 @@ class Trainer(Fit):
         validation_size: float | datetime.timedelta | None = None,
         dt_column: str | None = None,
         max_train_timeout: datetime.timedelta | None = None,
+        cutoff_dt: datetime.datetime | None = None,
     ):
         tqdm.tqdm.pandas()
 
@@ -65,6 +66,8 @@ class Trainer(Fit):
             test_size = 0.15
         if validation_size is None:
             validation_size = 0.15
+        if cutoff_dt is None:
+            cutoff_dt = datetime.datetime.now()
 
         params_file = os.path.join(self._folder, _PARAMS_FILENAME)
         if walkforward_timedelta is None:
@@ -139,6 +142,7 @@ class Trainer(Fit):
         self._validation_size = validation_size
         self._dt_column = dt_column
         self._max_train_timeout = max_train_timeout
+        self._cutoff_dt = cutoff_dt
 
     def _provide_study(self, column: str) -> optuna.Study:
         storage_name = f"sqlite:///{self._folder}/{column}/{_STUDYDB_FILENAME}"
@@ -172,6 +176,8 @@ class Trainer(Fit):
             if self._dt_column is None
             else pd.DatetimeIndex(pd.to_datetime(df[self._dt_column]))
         )
+        df = df[dt_index < self._cutoff_dt]  # type: ignore
+        y = y.iloc[: len(df)]
 
         def _fit_column(y_series: pd.Series):
             column_dir = os.path.join(self._folder, str(y_series.name))
@@ -187,6 +193,7 @@ class Trainer(Fit):
                 save: bool,
                 split_idx: datetime.datetime,
             ) -> float:
+                print(f"Beginning trial for: {split_idx.isoformat()}")
                 trial.set_user_attr(_IDX_USR_ATTR_KEY, split_idx.isoformat())
 
                 train_dt_index = dt_index[: len(x)]
@@ -326,6 +333,7 @@ class Trainer(Fit):
                         found = True
                         break
                 if found:
+                    last_processed_dt = test_dt
                     continue
 
                 test_df = df.iloc[: train_len + count + test_len]
