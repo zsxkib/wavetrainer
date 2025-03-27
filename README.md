@@ -24,6 +24,7 @@ Python 3.11.6:
 - [catboost](https://catboost.ai/)
 - [venn-abers](https://github.com/ip200/venn-abers)
 - [mapie](https://mapie.readthedocs.io/en/stable/)
+- [pytz](https://pythonhosted.org/pytz/)
 
 ## Raison D'être :thought_balloon:
 

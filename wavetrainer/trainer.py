@@ -178,6 +178,7 @@ class Trainer(Fit):
         )
         df = df[dt_index < self._cutoff_dt]  # type: ignore
         y = y.iloc[: len(df)]
+        dt_index = dt_index[: len(df)]
 
         def _fit_column(y_series: pd.Series):
             column_dir = os.path.join(self._folder, str(y_series.name))
@@ -357,6 +358,7 @@ class Trainer(Fit):
                     )
 
                 _fit(study.best_trial, test_df, test_series, True, test_idx)
+                last_processed_dt = test_idx
 
         if isinstance(y, pd.Series):
             _fit_column(y)
