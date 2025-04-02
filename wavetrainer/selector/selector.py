@@ -33,7 +33,7 @@ class Selector(Params, Fit):
 
     def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         self._feature_ratio = trial.suggest_float("feature_ratio", 0.0, 1.0)
-        self._steps = trial.suggest_int("steps", 1, 16)
+        self._steps = trial.suggest_int("steps", 1, 10)
 
     def load(self, folder: str) -> None:
         self._selector = joblib.load(os.path.join(folder, _SELECTOR_FILE))

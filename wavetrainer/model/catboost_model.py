@@ -78,14 +78,12 @@ class CatboostModel(Model):
     def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         self._iterations = trial.suggest_int(_ITERATIONS_KEY, 100, 10000)
         self._learning_rate = trial.suggest_float(_LEARNING_RATE_KEY, 0.001, 0.3)
-        self._depth = trial.suggest_int(_DEPTH_KEY, 1, 12)
+        self._depth = trial.suggest_int(_DEPTH_KEY, 1, 10)
         self._l2_leaf_reg = trial.suggest_float(_L2_LEAF_REG_KEY, 3.0, 50.0)
         self._boosting_type = trial.suggest_categorical(
             _BOOSTING_TYPE_KEY, ["Ordered", "Plain"]
         )
-        self._early_stopping_rounds = trial.suggest_int(
-            _EARLY_STOPPING_ROUNDS, 10, 1000
-        )
+        self._early_stopping_rounds = trial.suggest_int(_EARLY_STOPPING_ROUNDS, 10, 500)
 
     def load(self, folder: str) -> None:
         with open(
