@@ -317,7 +317,7 @@ class Trainer(Fit):
 
             last_processed_dt = None
             for count, test_idx in tqdm.tqdm(
-                enumerate(test_dt_index[test_dt_index >= start_test_index])
+                enumerate(dt_index[dt_index >= start_test_index])
             ):
                 if (
                     last_processed_dt is not None
