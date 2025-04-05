@@ -1,6 +1,7 @@
 """A reducer that combines all the other reducers."""
 
 import json
+import logging
 import os
 from typing import Self
 
@@ -12,6 +13,7 @@ from .correlation_reducer import CorrelationReducer
 from .duplicate_reducer import DuplicateReducer
 from .nonnumeric_reducer import NonNumericReducer
 from .reducer import Reducer
+from .unseen_reducer import UnseenReducer
 
 _COMBINED_REDUCER_FILE = "combined_reducer.json"
 _REDUCERS_KEY = "reducers"
@@ -25,6 +27,7 @@ class CombinedReducer(Reducer):
     def __init__(self):
         super().__init__()
         self._reducers = [
+            UnseenReducer(),
             ConstantReducer(),
             DuplicateReducer(),
             NonNumericReducer(),
@@ -54,6 +57,8 @@ class CombinedReducer(Reducer):
                     self._reducers.append(CorrelationReducer())
                 elif reducer_name == NonNumericReducer.name():
                     self._reducers.append(NonNumericReducer())
+                elif reducer_name == UnseenReducer.name():
+                    self._reducers.append(UnseenReducer())
         for reducer in self._reducers:
             reducer.load(folder)
 
@@ -84,5 +89,9 @@ class CombinedReducer(Reducer):
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         for reducer in self._reducers:
-            df = reducer.transform(df)
+            try:
+                df = reducer.transform(df)
+            except ValueError as exc:
+                logging.warning("Failed to reduce %s", reducer.name())
+                raise exc
         return df
