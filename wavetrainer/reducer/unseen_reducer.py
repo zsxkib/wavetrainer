@@ -19,7 +19,7 @@ class UnseenReducer(Reducer):
 
     def __init__(self):
         super().__init__()
-        self._seen_features = set()
+        self._seen_features = []
 
     @classmethod
     def name(cls) -> str:
@@ -32,14 +32,14 @@ class UnseenReducer(Reducer):
         with open(
             os.path.join(folder, _UNSEEN_REDUCER_FILE), encoding="utf8"
         ) as handle:
-            self._seen_features = set(json.load(handle))
+            self._seen_features = json.load(handle)
 
     def save(self, folder: str) -> None:
         with open(
             os.path.join(folder, _UNSEEN_REDUCER_FILE), "w", encoding="utf8"
         ) as handle:
             json.dump(
-                list(self._seen_features),
+                self._seen_features,
                 handle,
             )
 
@@ -55,4 +55,4 @@ class UnseenReducer(Reducer):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        return df[list(self._seen_features)]
+        return df[self._seen_features]
