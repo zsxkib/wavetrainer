@@ -1,6 +1,7 @@
 """A model that wraps catboost."""
 
 import json
+import logging
 import os
 from typing import Any, Self
 
@@ -152,6 +153,8 @@ class CatboostModel(Model):
             metric_period=100,
             eval_set=eval_pool,
         )
+        importances = catboost.get_feature_importance(prettified=True)
+        logging.info("Importances:\n%s", importances)
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:

@@ -66,14 +66,6 @@ class Selector(Params, Fit):
         )
         try:
             self._selector.fit(df, y=y, sample_weight=w, **model_kwargs)
-            importances = self._model.estimator.feature_importances_
-            try:
-                importances_len = len(importances)
-                columns = self._selector.get_feature_names_out()
-                for i in range(importances_len):
-                    logging.info("Feature %s: %f", columns[i], importances[i])
-            except TypeError:
-                pass
         except ValueError as exc:
             # Catch issues with 1 feature as a reduction target.
             logging.warning(str(exc))
