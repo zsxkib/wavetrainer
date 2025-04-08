@@ -171,6 +171,8 @@ class Trainer(Fit):
         if y is None:
             return self
 
+        df = df.reindex(sorted(df.columns), axis=1)
+
         dt_index = (
             df.index
             if self._dt_column is None
@@ -370,6 +372,7 @@ class Trainer(Fit):
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """Predict the expected values of the data."""
+        df = df.reindex(sorted(df.columns), axis=1)
         feature_columns = df.columns.values
         dt_index = (
             df.index
