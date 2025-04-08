@@ -284,7 +284,9 @@ class Trainer(Fit):
             start_test_index = (
                 test_dt_index.to_list()[-int(len(test_dt_index) * self._test_size)]
                 if isinstance(self._test_size, float)
-                else test_dt_index[test_dt_index >= self._test_size][0]
+                else test_dt_index[
+                    test_dt_index >= (start_validation_index - self._test_size)  # type: ignore
+                ][0]
             )
 
             def test_objective(trial: optuna.Trial) -> float:
