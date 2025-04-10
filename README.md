@@ -25,6 +25,7 @@ Python 3.11.6:
 - [venn-abers](https://github.com/ip200/venn-abers)
 - [mapie](https://mapie.readthedocs.io/en/stable/)
 - [pytz](https://pythonhosted.org/pytz/)
+- [torch](https://pytorch.org/)
 
 ## Raison D'être :thought_balloon:
 

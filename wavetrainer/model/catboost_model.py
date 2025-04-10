@@ -7,6 +7,7 @@ from typing import Any, Self
 
 import optuna
 import pandas as pd
+import torch
 from catboost import CatBoost, Pool  # type: ignore
 
 from ..model_type import ModelType, determine_model_type
@@ -189,6 +190,8 @@ class CatboostModel(Model):
                         boosting_type=self._boosting_type,
                         early_stopping_rounds=self._early_stopping_rounds,
                         metric_period=100,
+                        task_type="GPU" if torch.cuda.is_available() else "CPU",
+                        devices="0" if torch.cuda.is_available() else None,
                     )
                 case ModelType.REGRESSION:
                     catboost = CatBoostRegressorWrapper(
@@ -199,6 +202,8 @@ class CatboostModel(Model):
                         boosting_type=self._boosting_type,
                         early_stopping_rounds=self._early_stopping_rounds,
                         metric_period=100,
+                        task_type="GPU" if torch.cuda.is_available() else "CPU",
+                        devices="0" if torch.cuda.is_available() else None,
                     )
                 case ModelType.BINNED_BINARY:
                     catboost = CatBoostClassifierWrapper(
@@ -209,6 +214,8 @@ class CatboostModel(Model):
                         boosting_type=self._boosting_type,
                         early_stopping_rounds=self._early_stopping_rounds,
                         metric_period=100,
+                        task_type="GPU" if torch.cuda.is_available() else "CPU",
+                        devices="0" if torch.cuda.is_available() else None,
                     )
                 case ModelType.MULTI_CLASSIFICATION:
                     catboost = CatBoostClassifierWrapper(
@@ -219,6 +226,8 @@ class CatboostModel(Model):
                         boosting_type=self._boosting_type,
                         early_stopping_rounds=self._early_stopping_rounds,
                         metric_period=100,
+                        task_type="GPU" if torch.cuda.is_available() else "CPU",
+                        devices="0" if torch.cuda.is_available() else None,
                     )
             self._catboost = catboost
         if catboost is None:
