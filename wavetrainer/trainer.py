@@ -323,11 +323,6 @@ class Trainer(Fit):
             for count, test_idx in tqdm.tqdm(
                 enumerate(dt_index[dt_index >= start_test_index])
             ):
-                if (
-                    last_processed_dt is not None
-                    and test_idx < last_processed_dt + self._walkforward_timedelta
-                ):
-                    continue
                 test_dt = test_idx.to_pydatetime()
                 found = False
                 for trial in study.trials:
@@ -339,6 +334,11 @@ class Trainer(Fit):
                         break
                 if found:
                     last_processed_dt = test_dt
+                    continue
+                if (
+                    last_processed_dt is not None
+                    and test_idx < last_processed_dt + self._walkforward_timedelta
+                ):
                     continue
 
                 test_df = df.iloc[: train_len + count + test_len]
