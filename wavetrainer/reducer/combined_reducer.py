@@ -28,9 +28,9 @@ class CombinedReducer(Reducer):
         super().__init__()
         self._reducers = [
             UnseenReducer(),
+            NonNumericReducer(),
             ConstantReducer(),
             DuplicateReducer(),
-            NonNumericReducer(),
             CorrelationReducer(),
         ]
 
