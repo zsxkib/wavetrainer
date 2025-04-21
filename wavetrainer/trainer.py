@@ -374,6 +374,7 @@ class Trainer(Fit):
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """Predict the expected values of the data."""
+        input_df = df.copy()
         df = df.reindex(sorted(df.columns), axis=1)
         feature_columns = df.columns.values
         dt_index = (
@@ -456,4 +457,10 @@ class Trainer(Fit):
             )
             if self._dt_column is None:
                 df = df.set_index(old_index)
+
+        for col in input_df.columns.values:
+            if col in df.columns.values:
+                continue
+            df[col] = input_df[col]
+
         return df
