@@ -61,12 +61,17 @@ class CatboostModel(Model):
     def estimator(self) -> Any:
         return self._provide_catboost()
 
+    @property
+    def supports_importances(self) -> bool:
+        return True
+
     def pre_fit(
         self,
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None,
         eval_x: pd.DataFrame | None = None,
         eval_y: pd.Series | pd.DataFrame | None = None,
+        w: pd.Series | None = None,
     ):
         if y is None:
             raise ValueError("y is null.")
@@ -75,6 +80,7 @@ class CatboostModel(Model):
             EVAL_SET_ARG_KEY: (eval_x, eval_y),
             CAT_FEATURES_ARG_KEY: df.select_dtypes(include="category").columns.tolist(),
             ORIGINAL_X_ARG_KEY: df,
+            "sample_weight": w,
         }
 
     def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:

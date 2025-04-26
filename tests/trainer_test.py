@@ -14,7 +14,7 @@ class TestTrainer(unittest.TestCase):
     def test_trainer(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             trainer = Trainer(tmpdir, walkforward_timedelta=datetime.timedelta(days=7), trials=1)
-            x_data = [i for i in range(100)]
+            x_data = [i for i in range(101)]
             x_index = [datetime.datetime(2022, 1, 1) + datetime.timedelta(days=i) for i in range(len(x_data))]
             df = pd.DataFrame(
                 data={

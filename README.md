@@ -26,6 +26,11 @@ Python 3.11.6:
 - [mapie](https://mapie.readthedocs.io/en/stable/)
 - [pytz](https://pythonhosted.org/pytz/)
 - [torch](https://pytorch.org/)
+- [tabpfn](https://github.com/PriorLabs/TabPFN)
+- [tabpfn-extensions](https://github.com/PriorLabs/tabpfn-extensions)
+- [shap](https://shap.readthedocs.io/en/latest/)
+- [hyperopt](https://hyperopt.github.io/hyperopt/)
+- [pytest-is-running](https://github.com/adamchainz/pytest-is-running)
 
 ## Raison D'être :thought_balloon:
 

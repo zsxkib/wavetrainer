@@ -266,7 +266,6 @@ class Trainer(Fit):
                         return float(r2_score(y_test, y_pred[[PREDICTION_COLUMN]]))
                     return float(f1_score(y_test, y_pred[[PREDICTION_COLUMN]]))
                 except WavetrainException as exc:
-                    logging.warning("WE DID NOT END UP TRAINING ANYTHING!!!!!")
                     logging.warning(str(exc))
                     return -1.0
 
@@ -343,6 +342,8 @@ class Trainer(Fit):
 
                 test_df = df.iloc[: train_len + count + test_len]
                 test_series = y_series.iloc[: train_len + count + test_len]
+                if len(test_df) <= 2:
+                    continue
 
                 if test_idx < start_validation_index:
 

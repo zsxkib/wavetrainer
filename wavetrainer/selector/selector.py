@@ -49,8 +49,10 @@ class Selector(Params, Fit):
         eval_x: pd.DataFrame | None = None,
         eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
+        if not self._model.supports_importances:
+            return self
         sklearn.set_config(enable_metadata_routing=False)
-        model_kwargs = self._model.pre_fit(df, y=y, eval_x=eval_x, eval_y=eval_y)
+        model_kwargs = self._model.pre_fit(df, y=y, eval_x=eval_x, eval_y=eval_y, w=w)
         if not isinstance(y, pd.Series):
             raise ValueError("y is not a series.")
         if len(df.columns) <= 1:
@@ -65,7 +67,7 @@ class Selector(Params, Fit):
             ),
         )
         try:
-            self._selector.fit(df, y=y, sample_weight=w, **model_kwargs)
+            self._selector.fit(df, y=y, **model_kwargs)
         except ValueError as exc:
             # Catch issues with 1 feature as a reduction target.
             logging.warning(str(exc))
@@ -76,7 +78,8 @@ class Selector(Params, Fit):
             return df
         selector = self._selector
         if selector is None:
-            raise ValueError("selector is null.")
+            logging.warning("selector is null")
+            return df
         try:
             return df[selector.get_feature_names_out()]
         except AttributeError as exc:

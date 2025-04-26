@@ -9,11 +9,13 @@ import pandas as pd
 
 from .catboost_model import CatboostModel
 from .model import Model
+from .tabpfn_model import TabPFNModel
 
 _MODEL_ROUTER_FILE = "model_router.json"
 _MODEL_KEY = "model"
 _MODELS = {
     CatboostModel.name(): CatboostModel,
+    TabPFNModel.name(): TabPFNModel,
 }
 
 
@@ -39,23 +41,30 @@ class ModelRouter(Model):
             raise ValueError("model is null")
         return model.estimator
 
+    @property
+    def supports_importances(self) -> bool:
+        model = self._model
+        if model is None:
+            raise ValueError("model is null")
+        return model.supports_importances
+
     def pre_fit(
         self,
         df: pd.DataFrame,
         y: pd.Series | pd.DataFrame | None,
         eval_x: pd.DataFrame | None = None,
         eval_y: pd.Series | pd.DataFrame | None = None,
+        w: pd.Series | None = None,
     ) -> dict[str, Any]:
         model = self._model
         if model is None:
             raise ValueError("model is null")
-        return model.pre_fit(df, y=y, eval_x=eval_x, eval_y=eval_y)
+        return model.pre_fit(df, y=y, eval_x=eval_x, eval_y=eval_y, w=w)
 
     def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
-        self._model = _MODELS[
-            trial.suggest_categorical("model", list(_MODELS.keys()))
-        ]()
-        self._model.set_options(trial)
+        model = _MODELS[trial.suggest_categorical("model", list(_MODELS.keys()))]()
+        model.set_options(trial)
+        self._model = model
 
     def load(self, folder: str) -> None:
         with open(os.path.join(folder, _MODEL_ROUTER_FILE), encoding="utf8") as handle:
