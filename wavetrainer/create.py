@@ -15,6 +15,7 @@ def create(
     dt_column: str | None = None,
     max_train_timeout: datetime.timedelta | None = None,
     cutoff_dt: datetime.datetime | None = None,
+    max_features: int | None = None,
 ) -> Trainer:
     """Create a trainer."""
     return Trainer(
@@ -25,4 +26,5 @@ def create(
         dt_column=dt_column,
         max_train_timeout=max_train_timeout,
         cutoff_dt=cutoff_dt,
+        max_features=max_features,
     )

@@ -20,10 +20,15 @@ class PCAReducer(Reducer):
 
     # pylint: disable=too-many-positional-arguments,too-many-arguments
 
-    def __init__(self):
+    def __init__(self, max_features: int | None):
         super().__init__()
-        self._scaler = StandardScaler()
-        self._pca = PCA(n_components=300)
+        self._max_features = max_features
+        if max_features is not None:
+            self._scaler = StandardScaler()
+            self._pca = PCA(n_components=max_features)
+        else:
+            self._scaler = None
+            self._pca = None
 
     @classmethod
     def name(cls) -> str:
@@ -33,12 +38,18 @@ class PCAReducer(Reducer):
         pass
 
     def load(self, folder: str) -> None:
-        self._scaler = joblib.load(os.path.join(folder, _PCA_SCALER_FILE))
-        self._pca = joblib.load(os.path.join(folder, _PCA_FILE))
+        pca_scaler_file = os.path.join(folder, _PCA_SCALER_FILE)
+        pca_file = os.path.join(folder, _PCA_FILE)
+        if os.path.exists(pca_scaler_file):
+            self._scaler = joblib.load(pca_scaler_file)
+        if os.path.exists(pca_file):
+            self._pca = joblib.load(pca_file)
 
     def save(self, folder: str) -> None:
-        joblib.dump(self._scaler, os.path.join(folder, _PCA_SCALER_FILE))
-        joblib.dump(self._pca, os.path.join(folder, _PCA_FILE))
+        if self._scaler is not None:
+            joblib.dump(self._scaler, os.path.join(folder, _PCA_SCALER_FILE))
+        if self._pca is not None:
+            joblib.dump(self._pca, os.path.join(folder, _PCA_FILE))
 
     def fit(
         self,
@@ -48,13 +59,19 @@ class PCAReducer(Reducer):
         eval_x: pd.DataFrame | None = None,
         eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
-        if len(df.columns.values) < self._pca.n_components:  # type: ignore
+        pca = self._pca
+        scaler = self._scaler
+        if pca is None or scaler is None:
             return self
-        x_scaled = self._scaler.fit_transform(df)
-        self._pca.fit(x_scaled)
+        if len(df.columns.values) < pca.n_components:  # type: ignore
+            return self
+        x_scaled = scaler.fit_transform(df)
+        pca.fit(x_scaled)
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        if self._pca is None:
+            return df
         if len(df.columns.values) < self._pca.n_components:  # type: ignore
             return df
         return self._pca.transform(df)

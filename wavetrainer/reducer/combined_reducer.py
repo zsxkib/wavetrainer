@@ -25,15 +25,16 @@ class CombinedReducer(Reducer):
 
     # pylint: disable=too-many-positional-arguments,too-many-arguments
 
-    def __init__(self):
+    def __init__(self, max_features: int | None):
         super().__init__()
+        self._max_features = max_features
         self._reducers = [
             UnseenReducer(),
             NonNumericReducer(),
             ConstantReducer(),
             DuplicateReducer(),
             CorrelationReducer(),
-            PCAReducer(),
+            PCAReducer(max_features),
         ]
 
     @classmethod
@@ -62,7 +63,7 @@ class CombinedReducer(Reducer):
                 elif reducer_name == UnseenReducer.name():
                     self._reducers.append(UnseenReducer())
                 elif reducer_name == PCAReducer.name():
-                    self._reducers.append(PCAReducer())
+                    self._reducers.append(PCAReducer(self._max_features))
         for reducer in self._reducers:
             reducer.load(folder)
 
