@@ -31,7 +31,9 @@ class Selector(Params, Fit):
         self._steps = 0
         self._selector = None
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
         self._feature_ratio = trial.suggest_float("feature_ratio", 0.0, 1.0)
         self._steps = trial.suggest_int("steps", 1, 10)
 

@@ -38,7 +38,9 @@ class WeightsRouter(Weights):
     def name(cls) -> str:
         return "router"
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
         self._weights = _WEIGHTS[
             trial.suggest_categorical("weights", list(_WEIGHTS.keys()))
         ]()

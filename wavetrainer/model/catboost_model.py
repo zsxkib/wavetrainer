@@ -48,6 +48,10 @@ class CatboostModel(Model):
     def name(cls) -> str:
         return "catboost"
 
+    @classmethod
+    def supports_x(cls, df: pd.DataFrame) -> bool:
+        return True
+
     def __init__(self) -> None:
         super().__init__()
         self._catboost = None
@@ -86,7 +90,9 @@ class CatboostModel(Model):
             "sample_weight": w,
         }
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
         self._iterations = trial.suggest_int(_ITERATIONS_KEY, 100, 10000)
         self._learning_rate = trial.suggest_float(_LEARNING_RATE_KEY, 0.001, 0.3)
         self._depth = trial.suggest_int(_DEPTH_KEY, 1, 10)

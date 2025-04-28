@@ -34,6 +34,10 @@ class ModelRouter(Model):
     def name(cls) -> str:
         return "router"
 
+    @classmethod
+    def supports_x(cls, df: pd.DataFrame) -> bool:
+        return True
+
     @property
     def estimator(self) -> Any:
         model = self._model
@@ -61,9 +65,15 @@ class ModelRouter(Model):
             raise ValueError("model is null")
         return model.pre_fit(df, y=y, eval_x=eval_x, eval_y=eval_y, w=w)
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
-        model = _MODELS[trial.suggest_categorical("model", list(_MODELS.keys()))]()
-        model.set_options(trial)
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
+        model = _MODELS[
+            trial.suggest_categorical(
+                "model", [k for k, v in _MODELS.items() if v.supports_x(df)]
+            )
+        ]()
+        model.set_options(trial, df)
         self._model = model
 
     def load(self, folder: str) -> None:

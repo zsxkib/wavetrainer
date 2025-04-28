@@ -1,12 +1,15 @@
 """A class for loading/saving parameters."""
 
 import optuna
+import pandas as pd
 
 
 class Params:
     """The params prototype class."""
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
         """Set the options used in the object."""
         raise NotImplementedError("set_options not implemented in parent class.")
 

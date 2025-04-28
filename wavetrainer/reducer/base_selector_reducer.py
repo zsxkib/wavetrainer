@@ -32,7 +32,9 @@ class BaseSelectorReducer(Reducer):
         """Whether the class should raise its exception if it encounters it."""
         return True
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
         pass
 
     def load(self, folder: str) -> None:

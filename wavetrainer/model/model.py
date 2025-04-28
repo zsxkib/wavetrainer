@@ -20,6 +20,11 @@ class Model(Params, Fit):
         """The name of the model."""
         raise NotImplementedError("name not implemented in parent class.")
 
+    @classmethod
+    def supports_x(cls, df: pd.DataFrame) -> bool:
+        """Whether the model supports the X values."""
+        raise NotImplementedError("supports_x not implemented in parent class.")
+
     @property
     def estimator(self) -> Any:
         """The estimator backing the model."""

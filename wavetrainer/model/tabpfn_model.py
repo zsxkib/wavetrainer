@@ -31,6 +31,10 @@ class TabPFNModel(Model):
     def name(cls) -> str:
         return "tabpfn"
 
+    @classmethod
+    def supports_x(cls, df: pd.DataFrame) -> bool:
+        return len(df.columns.values) < 500
+
     def __init__(self) -> None:
         super().__init__()
         self._tabpfn = None
@@ -57,7 +61,9 @@ class TabPFNModel(Model):
         self._model_type = determine_model_type(y)
         return {}
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
         pass
 
     def load(self, folder: str) -> None:

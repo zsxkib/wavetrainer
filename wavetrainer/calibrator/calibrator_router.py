@@ -36,8 +36,13 @@ class CalibratorRouter(Calibrator):
     def name(cls) -> str:
         return "router"
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
-        pass
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
+        calibrator = self._calibrator
+        if calibrator is None:
+            return
+        calibrator.set_options(trial, df)
 
     def load(self, folder: str) -> None:
         with open(

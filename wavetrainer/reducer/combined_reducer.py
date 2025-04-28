@@ -12,7 +12,6 @@ from .constant_reducer import ConstantReducer
 from .correlation_reducer import CorrelationReducer
 from .duplicate_reducer import DuplicateReducer
 from .nonnumeric_reducer import NonNumericReducer
-from .pca_reducer import PCAReducer
 from .reducer import Reducer
 from .unseen_reducer import UnseenReducer
 
@@ -25,25 +24,25 @@ class CombinedReducer(Reducer):
 
     # pylint: disable=too-many-positional-arguments,too-many-arguments
 
-    def __init__(self, max_features: int | None):
+    def __init__(self):
         super().__init__()
-        self._max_features = max_features
         self._reducers = [
             UnseenReducer(),
             NonNumericReducer(),
             ConstantReducer(),
             DuplicateReducer(),
             CorrelationReducer(),
-            PCAReducer(max_features),
         ]
 
     @classmethod
     def name(cls) -> str:
         return "combined"
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
         for reducer in self._reducers:
-            reducer.set_options(trial)
+            reducer.set_options(trial, df)
 
     def load(self, folder: str) -> None:
         self._reducers = []
@@ -62,8 +61,6 @@ class CombinedReducer(Reducer):
                     self._reducers.append(NonNumericReducer())
                 elif reducer_name == UnseenReducer.name():
                     self._reducers.append(UnseenReducer())
-                elif reducer_name == PCAReducer.name():
-                    self._reducers.append(PCAReducer(self._max_features))
         for reducer in self._reducers:
             reducer.load(folder)
 

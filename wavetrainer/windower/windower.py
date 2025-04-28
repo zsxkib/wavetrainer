@@ -28,7 +28,9 @@ class Windower(Params, Fit):
         self._lookback_ratio = None
         self._dt_column = dt_column
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
         self._lookback_ratio = trial.suggest_float("lookback", 0.1, 1.0)
 
     def load(self, folder: str) -> None:

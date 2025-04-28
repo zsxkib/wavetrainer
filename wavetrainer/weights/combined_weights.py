@@ -23,9 +23,11 @@ class CombinedWeights(Weights):
     def name(cls) -> str:
         return "combined"
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
         for weights in self._weights:
-            weights.set_options(trial)
+            weights.set_options(trial, df)
 
     def load(self, folder: str) -> None:
         for weights in self._weights:

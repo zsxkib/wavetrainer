@@ -27,7 +27,9 @@ class VennabersCalibrator(Calibrator):
     def name(cls) -> str:
         return "vennabers"
 
-    def set_options(self, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
+    def set_options(
+        self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
+    ) -> None:
         pass
 
     def load(self, folder: str) -> None:

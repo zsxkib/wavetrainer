@@ -36,7 +36,6 @@ _TEST_SIZE_KEY = "test_size"
 _VALIDATION_SIZE_KEY = "validation_size"
 _IDX_USR_ATTR_KEY = "idx"
 _DT_COLUMN_KEY = "dt_column"
-_MAX_FEATURES_KEY = "max_features"
 
 
 class Trainer(Fit):
@@ -54,7 +53,6 @@ class Trainer(Fit):
         dt_column: str | None = None,
         max_train_timeout: datetime.timedelta | None = None,
         cutoff_dt: datetime.datetime | None = None,
-        max_features: int | None = None,
     ):
         tqdm.tqdm.pandas()
 
@@ -105,7 +103,6 @@ class Trainer(Fit):
                         )
                 if dt_column is None:
                     dt_column = params[_DT_COLUMN_KEY]
-                max_features = params.get(_MAX_FEATURES_KEY)
         else:
             with open(params_file, "w", encoding="utf8") as handle:
                 validation_size_value = None
@@ -136,7 +133,6 @@ class Trainer(Fit):
                         _TEST_SIZE_KEY: test_size_value,
                         _VALIDATION_SIZE_KEY: validation_size_value,
                         _DT_COLUMN_KEY: dt_column,
-                        _MAX_FEATURES_KEY: max_features,
                     },
                     handle,
                 )
@@ -147,7 +143,6 @@ class Trainer(Fit):
         self._dt_column = dt_column
         self._max_train_timeout = max_train_timeout
         self._cutoff_dt = cutoff_dt
-        self._max_features = max_features
 
     def _provide_study(self, column: str) -> optuna.Study:
         storage_name = f"sqlite:///{self._folder}/{column}/{_STUDYDB_FILENAME}"
@@ -213,7 +208,7 @@ class Trainer(Fit):
                 try:
                     # Window the data
                     windower = Windower(self._dt_column)
-                    windower.set_options(trial)
+                    windower.set_options(trial, x)
                     x_train = windower.fit_transform(x_train)
                     y_train = y_train[-len(x_train) :]
                     if len(y_train.unique()) <= 1:
@@ -221,25 +216,25 @@ class Trainer(Fit):
                         return -1.0
 
                     # Perform common reductions
-                    reducer = CombinedReducer(self._max_features)
-                    reducer.set_options(trial)
+                    reducer = CombinedReducer()
+                    reducer.set_options(trial, x)
                     x_train = reducer.fit_transform(x_train)
                     x_test = reducer.transform(x_test)
 
                     # Calculate the row weights
                     weights = CombinedWeights()
-                    weights.set_options(trial)
+                    weights.set_options(trial, x)
                     w = weights.fit(x_train, y=y_train).transform(y_train.to_frame())[
                         WEIGHTS_COLUMN
                     ]
 
                     # Create model
                     model = ModelRouter()
-                    model.set_options(trial)
+                    model.set_options(trial, x)
 
                     # Train
                     selector = Selector(model)
-                    selector.set_options(trial)
+                    selector.set_options(trial, x)
                     selector.fit(x_train, y=y_train, w=w, eval_x=x_test, eval_y=y_test)
                     x_train = selector.transform(x_train)
                     x_test = selector.transform(x_test)
@@ -249,7 +244,7 @@ class Trainer(Fit):
 
                     # Calibrate
                     calibrator = CalibratorRouter(model)
-                    calibrator.set_options(trial)
+                    calibrator.set_options(trial, x)
                     calibrator.fit(x_pred, y=y_train)
 
                     if save:
@@ -431,7 +426,7 @@ class Trainer(Fit):
                 date_str = dates[-1].isoformat()
                 folder = os.path.join(column_path, date_str)
 
-                reducer = CombinedReducer(self._max_features)
+                reducer = CombinedReducer()
                 reducer.load(folder)
 
                 model = ModelRouter()
