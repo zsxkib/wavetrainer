@@ -38,7 +38,7 @@ class Selector(Params, Fit):
     def load(self, folder: str) -> None:
         self._selector = joblib.load(os.path.join(folder, _SELECTOR_FILE))
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         joblib.dump(self._selector, os.path.join(folder, _SELECTOR_FILE))
 
     def fit(

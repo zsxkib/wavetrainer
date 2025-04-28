@@ -48,11 +48,11 @@ class CalibratorRouter(Calibrator):
         calibrator.load(folder)
         self._calibrator = calibrator
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         calibrator = self._calibrator
         if calibrator is None:
             raise ValueError("calibrator is null.")
-        calibrator.save(folder)
+        calibrator.save(folder, trial)
         with open(
             os.path.join(folder, _CALIBRATOR_ROUTER_FILE), "w", encoding="utf8"
         ) as handle:

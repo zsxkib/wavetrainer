@@ -14,6 +14,6 @@ class Params:
         """Loads the objects from a folder."""
         raise NotImplementedError("load not implemented in parent class.")
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         """Saves the objects into a folder."""
         raise NotImplementedError("save not implemented in parent class.")

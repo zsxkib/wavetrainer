@@ -34,7 +34,7 @@ class UnseenReducer(Reducer):
         ) as handle:
             self._seen_features = json.load(handle)
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         with open(
             os.path.join(folder, _UNSEEN_REDUCER_FILE), "w", encoding="utf8"
         ) as handle:

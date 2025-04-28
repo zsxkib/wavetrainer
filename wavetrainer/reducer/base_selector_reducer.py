@@ -39,7 +39,7 @@ class BaseSelectorReducer(Reducer):
         file_path = os.path.join(folder, self._file_name)
         self._base_selector = joblib.load(file_path)
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         file_path = os.path.join(folder, self._file_name)
         joblib.dump(self._base_selector, file_path)
 

@@ -69,7 +69,7 @@ class TabPFNModel(Model):
             params = json.load(handle)
             self._model_type = ModelType(params[_MODEL_TYPE_KEY])
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         with open(os.path.join(folder, _MODEL_FILENAME), "wb") as f:
             pickle.dump(self._tabpfn, f)
         with open(

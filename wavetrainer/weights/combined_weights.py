@@ -31,9 +31,9 @@ class CombinedWeights(Weights):
         for weights in self._weights:
             weights.load(folder)
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         for weights in self._weights:
-            weights.save(folder)
+            weights.save(folder, trial)
 
     def fit(
         self,

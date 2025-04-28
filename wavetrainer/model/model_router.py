@@ -73,11 +73,11 @@ class ModelRouter(Model):
         model.load(folder)
         self._model = model
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         model = self._model
         if model is None:
             raise ValueError("model is null")
-        model.save(folder)
+        model.save(folder, trial)
         with open(
             os.path.join(folder, _MODEL_ROUTER_FILE), "w", encoding="utf8"
         ) as handle:

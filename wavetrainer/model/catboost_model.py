@@ -26,6 +26,7 @@ _L2_LEAF_REG_KEY = "l2_leaf_reg"
 _BOOSTING_TYPE_KEY = "boosting_type"
 _MODEL_TYPE_KEY = "model_type"
 _EARLY_STOPPING_ROUNDS = "early_stopping_rounds"
+_BEST_ITERATION_KEY = "best_iteration"
 
 
 class CatboostModel(Model):
@@ -41,6 +42,7 @@ class CatboostModel(Model):
     _boosting_type: None | str
     _model_type: None | ModelType
     _early_stopping_rounds: None | int
+    _best_iteration: None | int
 
     @classmethod
     def name(cls) -> str:
@@ -56,6 +58,7 @@ class CatboostModel(Model):
         self._boosting_type = None
         self._model_type = None
         self._early_stopping_rounds = None
+        self._best_iteration = None
 
     @property
     def estimator(self) -> Any:
@@ -92,6 +95,7 @@ class CatboostModel(Model):
             _BOOSTING_TYPE_KEY, ["Ordered", "Plain"]
         )
         self._early_stopping_rounds = trial.suggest_int(_EARLY_STOPPING_ROUNDS, 10, 500)
+        self._best_iteration = trial.user_attrs.get(_BEST_ITERATION_KEY)
 
     def load(self, folder: str) -> None:
         with open(
@@ -105,10 +109,11 @@ class CatboostModel(Model):
             self._boosting_type = params[_BOOSTING_TYPE_KEY]
             self._model_type = ModelType(params[_MODEL_TYPE_KEY])
             self._early_stopping_rounds = params[_EARLY_STOPPING_ROUNDS]
+            self._best_iteration = params.get(_BEST_ITERATION_KEY)
         catboost = self._provide_catboost()
         catboost.load_model(os.path.join(folder, _MODEL_FILENAME))
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         with open(
             os.path.join(folder, _MODEL_PARAMS_FILENAME), "w", encoding="utf8"
         ) as handle:
@@ -121,11 +126,13 @@ class CatboostModel(Model):
                     _BOOSTING_TYPE_KEY: self._boosting_type,
                     _MODEL_TYPE_KEY: str(self._model_type),
                     _EARLY_STOPPING_ROUNDS: self._early_stopping_rounds,
+                    _BEST_ITERATION_KEY: self._best_iteration,
                 },
                 handle,
             )
         catboost = self._provide_catboost()
         catboost.save_model(os.path.join(folder, _MODEL_FILENAME))
+        trial.user_attrs[_BEST_ITERATION_KEY] = self._best_iteration
 
     def fit(
         self,
@@ -137,8 +144,6 @@ class CatboostModel(Model):
     ) -> Self:
         if y is None:
             raise ValueError("y is null.")
-        if eval_x is None:
-            raise ValueError("eval_x is null.")
         self._model_type = determine_model_type(y)
         catboost = self._provide_catboost()
 
@@ -148,10 +153,14 @@ class CatboostModel(Model):
             weight=w,
             cat_features=df.select_dtypes(include="category").columns.tolist(),
         )
-        eval_pool = Pool(
-            eval_x,
-            label=eval_y,
-            cat_features=eval_x.select_dtypes(include="category").columns.tolist(),
+        eval_pool = (
+            Pool(
+                eval_x,
+                label=eval_y,
+                cat_features=eval_x.select_dtypes(include="category").columns.tolist(),
+            )
+            if eval_x is not None
+            else None
         )
         catboost.fit(
             train_pool,
@@ -162,6 +171,7 @@ class CatboostModel(Model):
         )
         importances = catboost.get_feature_importance(prettified=True)
         logging.info("Importances:\n%s", importances)
+        self._best_iteration = catboost.get_best_iteration()
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -186,10 +196,14 @@ class CatboostModel(Model):
     def _provide_catboost(self) -> CatBoost:
         catboost = self._catboost
         if catboost is None:
+            best_iteration = self._best_iteration
+            iterations = (
+                best_iteration if best_iteration is not None else self._iterations
+            )
             match self._model_type:
                 case ModelType.BINARY:
                     catboost = CatBoostClassifierWrapper(
-                        iterations=self._iterations,
+                        iterations=iterations,
                         learning_rate=self._learning_rate,
                         depth=self._depth,
                         l2_leaf_reg=self._l2_leaf_reg,
@@ -201,7 +215,7 @@ class CatboostModel(Model):
                     )
                 case ModelType.REGRESSION:
                     catboost = CatBoostRegressorWrapper(
-                        iterations=self._iterations,
+                        iterations=iterations,
                         learning_rate=self._learning_rate,
                         depth=self._depth,
                         l2_leaf_reg=self._l2_leaf_reg,
@@ -213,7 +227,7 @@ class CatboostModel(Model):
                     )
                 case ModelType.BINNED_BINARY:
                     catboost = CatBoostClassifierWrapper(
-                        iterations=self._iterations,
+                        iterations=iterations,
                         learning_rate=self._learning_rate,
                         depth=self._depth,
                         l2_leaf_reg=self._l2_leaf_reg,
@@ -225,7 +239,7 @@ class CatboostModel(Model):
                     )
                 case ModelType.MULTI_CLASSIFICATION:
                     catboost = CatBoostClassifierWrapper(
-                        iterations=self._iterations,
+                        iterations=iterations,
                         learning_rate=self._learning_rate,
                         depth=self._depth,
                         l2_leaf_reg=self._l2_leaf_reg,

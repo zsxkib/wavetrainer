@@ -67,7 +67,7 @@ class CombinedReducer(Reducer):
         for reducer in self._reducers:
             reducer.load(folder)
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         with open(
             os.path.join(folder, _COMBINED_REDUCER_FILE), "w", encoding="utf8"
         ) as handle:
@@ -78,7 +78,7 @@ class CombinedReducer(Reducer):
                 handle,
             )
         for reducer in self._reducers:
-            reducer.save(folder)
+            reducer.save(folder, trial)
 
     def fit(
         self,

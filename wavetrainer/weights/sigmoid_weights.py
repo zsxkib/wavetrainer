@@ -26,7 +26,7 @@ class SigmoidWeights(Weights):
     def load(self, folder: str) -> None:
         pass
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         pass
 
     def fit(

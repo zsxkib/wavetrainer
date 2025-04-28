@@ -35,7 +35,7 @@ class MAPIECalibrator(Calibrator):
     def load(self, folder: str) -> None:
         self._mapie = joblib.load(os.path.join(folder, _CALIBRATOR_FILENAME))
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         joblib.dump(self._mapie, os.path.join(folder, _CALIBRATOR_FILENAME))
 
     def fit(

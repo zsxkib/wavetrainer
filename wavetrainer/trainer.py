@@ -258,12 +258,12 @@ class Trainer(Fit):
                         )
                         if not os.path.exists(folder):
                             os.mkdir(folder)
-                        windower.save(folder)
-                        reducer.save(folder)
-                        weights.save(folder)
-                        model.save(folder)
-                        selector.save(folder)
-                        calibrator.save(folder)
+                        windower.save(folder, trial)
+                        reducer.save(folder, trial)
+                        weights.save(folder, trial)
+                        model.save(folder, trial)
+                        selector.save(folder, trial)
+                        calibrator.save(folder, trial)
 
                     y_pred = model.transform(x_test)
                     y_pred = calibrator.transform(y_pred)
@@ -380,6 +380,7 @@ class Trainer(Fit):
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """Predict the expected values of the data."""
+        tqdm.tqdm.pandas(desc="Inferring...")
         input_df = df.copy()
         df = df.reindex(sorted(df.columns), axis=1)
         feature_columns = df.columns.values

@@ -36,7 +36,7 @@ class Windower(Params, Fit):
             params = json.load(handle)
             self._lookback = params[_LOOKBACK_KEY]
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         with open(os.path.join(folder, _WINDOWER_FILE), "w", encoding="utf8") as handle:
             json.dump(
                 {

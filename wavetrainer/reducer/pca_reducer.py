@@ -45,7 +45,7 @@ class PCAReducer(Reducer):
         if os.path.exists(pca_file):
             self._pca = joblib.load(pca_file)
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         if self._scaler is not None:
             joblib.dump(self._scaler, os.path.join(folder, _PCA_SCALER_FILE))
         if self._pca is not None:

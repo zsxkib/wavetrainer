@@ -54,10 +54,11 @@ class WeightsRouter(Weights):
             weights = _WEIGHTS[params[_WEIGHTS_KEY]]()
         self._weights = weights
 
-    def save(self, folder: str) -> None:
+    def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         weights = self._weights
         if weights is None:
             raise ValueError("weights is null")
+        weights.save(folder, trial)
         with open(
             os.path.join(folder, _WEIGHTS_ROUTER_FILE), "w", encoding="utf8"
         ) as handle:
