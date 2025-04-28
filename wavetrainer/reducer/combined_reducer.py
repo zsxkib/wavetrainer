@@ -13,6 +13,7 @@ from .correlation_reducer import CorrelationReducer
 from .duplicate_reducer import DuplicateReducer
 from .nonnumeric_reducer import NonNumericReducer
 from .reducer import Reducer
+from .smart_correlation_reducer import SmartCorrelationReducer
 from .unseen_reducer import UnseenReducer
 
 _COMBINED_REDUCER_FILE = "combined_reducer.json"
@@ -32,6 +33,7 @@ class CombinedReducer(Reducer):
             ConstantReducer(),
             DuplicateReducer(),
             CorrelationReducer(),
+            SmartCorrelationReducer(),
         ]
 
     @classmethod
@@ -61,6 +63,8 @@ class CombinedReducer(Reducer):
                     self._reducers.append(NonNumericReducer())
                 elif reducer_name == UnseenReducer.name():
                     self._reducers.append(UnseenReducer())
+                elif reducer_name == SmartCorrelationReducer.name():
+                    self._reducers.append(SmartCorrelationReducer())
         for reducer in self._reducers:
             reducer.load(folder)
 
