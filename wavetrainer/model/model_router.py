@@ -52,6 +52,13 @@ class ModelRouter(Model):
             raise ValueError("model is null")
         return model.supports_importances
 
+    @property
+    def feature_importances(self) -> dict[str, float]:
+        model = self._model
+        if model is None:
+            raise ValueError("model is null")
+        return model.feature_importances
+
     def pre_fit(
         self,
         df: pd.DataFrame,

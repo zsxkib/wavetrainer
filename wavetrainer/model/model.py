@@ -37,6 +37,13 @@ class Model(Params, Fit):
             "supports_importances not implemented in parent class."
         )
 
+    @property
+    def feature_importances(self) -> dict[str, float]:
+        """The feature importances of this model."""
+        raise NotImplementedError(
+            "feature_importances not implemented in parent class."
+        )
+
     def pre_fit(
         self,
         df: pd.DataFrame,

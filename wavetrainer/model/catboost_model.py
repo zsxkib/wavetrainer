@@ -72,6 +72,16 @@ class CatboostModel(Model):
     def supports_importances(self) -> bool:
         return True
 
+    @property
+    def feature_importances(self) -> dict[str, float]:
+        catboost = self._provide_catboost()
+        importances = catboost.get_feature_importance(prettified=True)
+        if importances is None:
+            raise ValueError("importances is null")
+        feature_ids = importances["Feature Id"].to_list()  # type: ignore
+        importances = importances["Importances"].to_list()  # type: ignore
+        return {feature_ids[x]: importances[x] for x in range(len(feature_ids))}
+
     def pre_fit(
         self,
         df: pd.DataFrame,
@@ -165,7 +175,7 @@ class CatboostModel(Model):
                 label=eval_y,
                 cat_features=eval_x.select_dtypes(include="category").columns.tolist(),
             )
-            if eval_x is not None
+            if eval_x is not None and self._best_iteration is not None
             else None
         )
         catboost.fit(

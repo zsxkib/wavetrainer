@@ -39,6 +39,13 @@ _IDX_USR_ATTR_KEY = "idx"
 _DT_COLUMN_KEY = "dt_column"
 
 
+def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
+    for i in range(len(bins) - 1):
+        if bins[i] <= timestamp < bins[i + 1]:
+            return i
+    return len(bins) - 2  # Assign to last bin if at the end
+
+
 class Trainer(Fit):
     """A class for training and predicting from an array of data."""
 
@@ -426,12 +433,6 @@ class Trainer(Fit):
                 + [(dt_index.max() + pd.Timedelta(days=1)).to_pydatetime()]
             )
 
-            def assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
-                for i in range(len(bins) - 1):
-                    if bins[i] <= timestamp < bins[i + 1]:
-                        return i
-                return len(bins) - 2  # Assign to last bin if at the end
-
             def perform_predictions(
                 group: pd.DataFrame,
                 column_path: str,
@@ -471,7 +472,7 @@ class Trainer(Fit):
 
             old_index = dt_index.copy()
             df = df.groupby(
-                dt_index.map(functools.partial(assign_bin, bins=bins))
+                dt_index.map(functools.partial(_assign_bin, bins=bins))
             ).progress_apply(  # type: ignore
                 functools.partial(
                     perform_predictions,
@@ -489,3 +490,21 @@ class Trainer(Fit):
             df[col] = input_df[col]
 
         return df
+
+    def feature_importances(self) -> dict[str, dict[str, float]]:
+        """Find the feature importances for the rolling models."""
+        feature_importances = {}
+
+        for column in os.listdir(self._folder):
+            column_path = os.path.join(self._folder, column)
+            if not os.path.isdir(column_path):
+                continue
+            for date_str in os.listdir(column_path):
+                date_path = os.path.join(column_path, date_str)
+                if not os.path.isdir(date_path):
+                    continue
+                model = ModelRouter()
+                model.load(date_path)
+                feature_importances[date_str] = model.feature_importances
+
+        return feature_importances

@@ -48,6 +48,10 @@ class TabPFNModel(Model):
     def supports_importances(self) -> bool:
         return False
 
+    @property
+    def feature_importances(self) -> dict[str, float]:
+        return {}
+
     def pre_fit(
         self,
         df: pd.DataFrame,
