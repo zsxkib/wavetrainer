@@ -28,6 +28,7 @@ from .windower.windower import Windower
 _SAMPLER_FILENAME = "sampler.pkl"
 _STUDYDB_FILENAME = "study.db"
 _PARAMS_FILENAME = "params.json"
+_TRIAL_FILENAME = "trial.json"
 _TRIALS_KEY = "trials"
 _WALKFORWARD_TIMEDELTA_KEY = "walkforward_timedelta"
 _DAYS_KEY = "days"
@@ -198,6 +199,20 @@ class Trainer(Fit):
             ) -> float:
                 print(f"Beginning trial for: {split_idx.isoformat()}")
                 trial.set_user_attr(_IDX_USR_ATTR_KEY, split_idx.isoformat())
+                folder = os.path.join(
+                    self._folder, str(y_series.name), split_idx.isoformat()
+                )
+                os.makedirs(folder, exist_ok=True)
+                trial_file = os.path.join(folder, _TRIAL_FILENAME)
+                if os.path.exists(trial_file):
+                    with open(trial_file, encoding="utf8") as handle:
+                        trial_info = json.load(handle)
+                        if trial_info["number"] == trial.number:
+                            logging.info(
+                                "Found trial %d previously executed, skipping...",
+                                trial.number,
+                            )
+                            return trial_info["output"]
 
                 train_dt_index = dt_index[: len(x)]
                 x_train = x[train_dt_index < split_idx]  # type: ignore
@@ -247,24 +262,32 @@ class Trainer(Fit):
                     calibrator.set_options(trial, x)
                     calibrator.fit(x_pred, y=y_train)
 
+                    # Output
+                    y_pred = model.transform(x_test)
+                    y_pred = calibrator.transform(y_pred)
+                    output = 0.0
+                    if determine_model_type(y_series) == ModelType.REGRESSION:
+                        output = float(r2_score(y_test, y_pred[[PREDICTION_COLUMN]]))
+                    else:
+                        output = float(f1_score(y_test, y_pred[[PREDICTION_COLUMN]]))
+
                     if save:
-                        folder = os.path.join(
-                            self._folder, str(y_series.name), split_idx.isoformat()
-                        )
-                        if not os.path.exists(folder):
-                            os.mkdir(folder)
                         windower.save(folder, trial)
                         reducer.save(folder, trial)
                         weights.save(folder, trial)
                         model.save(folder, trial)
                         selector.save(folder, trial)
                         calibrator.save(folder, trial)
+                        with open(trial_file, "w", encoding="utf8") as handle:
+                            json.dump(
+                                {
+                                    "number": trial.number,
+                                    "output": output,
+                                },
+                                handle,
+                            )
 
-                    y_pred = model.transform(x_test)
-                    y_pred = calibrator.transform(y_pred)
-                    if determine_model_type(y_series) == ModelType.REGRESSION:
-                        return float(r2_score(y_test, y_pred[[PREDICTION_COLUMN]]))
-                    return float(f1_score(y_test, y_pred[[PREDICTION_COLUMN]]))
+                    return output
                 except WavetrainException as exc:
                     logging.warning(str(exc))
                     return -1.0
