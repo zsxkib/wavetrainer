@@ -90,7 +90,16 @@ class CombinedReducer(Reducer):
         eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         for reducer in self._reducers:
+            before_columns = set(df.columns.values)
             df = reducer.fit_transform(df)
+            after_columns = set(df.columns.values)
+            removed_columns = before_columns.difference(after_columns)
+            if removed_columns:
+                logging.info(
+                    "Removed columns %s using %s",
+                    ",".join(removed_columns),
+                    reducer.name(),
+                )
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:

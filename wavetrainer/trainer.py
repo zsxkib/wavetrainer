@@ -37,6 +37,7 @@ _TEST_SIZE_KEY = "test_size"
 _VALIDATION_SIZE_KEY = "validation_size"
 _IDX_USR_ATTR_KEY = "idx"
 _DT_COLUMN_KEY = "dt_column"
+_BAD_OUTPUT = -1.0
 
 
 def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
@@ -209,6 +210,7 @@ class Trainer(Fit):
                 folder = os.path.join(
                     self._folder, str(y_series.name), split_idx.isoformat()
                 )
+                new_folder = os.path.exists(folder)
                 os.makedirs(folder, exist_ok=True)
                 trial_file = os.path.join(folder, _TRIAL_FILENAME)
                 if os.path.exists(trial_file):
@@ -234,8 +236,10 @@ class Trainer(Fit):
                     x_train = windower.fit_transform(x_train)
                     y_train = y_train[-len(x_train) :]
                     if len(y_train.unique()) <= 1:
+                        if new_folder:
+                            os.removedirs(folder)
                         logging.warning("Y train only contains 1 unique datapoint.")
-                        return -1.0
+                        return _BAD_OUTPUT
 
                     # Perform common reductions
                     reducer = CombinedReducer()
@@ -297,7 +301,9 @@ class Trainer(Fit):
                     return output
                 except WavetrainException as exc:
                     logging.warning(str(exc))
-                    return -1.0
+                    if new_folder:
+                        os.removedirs(folder)
+                    return _BAD_OUTPUT
 
             start_validation_index = (
                 dt_index.to_list()[-int(len(dt_index) * self._validation_size) - 1]
@@ -334,6 +340,15 @@ class Trainer(Fit):
                 study.optimize(
                     test_objective,
                     n_trials=initial_trials,
+                    show_progress_bar=True,
+                    timeout=None
+                    if self._max_train_timeout is None
+                    else self._max_train_timeout.total_seconds(),
+                )
+            while study.best_trial.value is None or study.best_trial.value != _BAD_OUTPUT:
+                study.optimize(
+                    test_objective,
+                    n_trials=1,
                     show_progress_bar=True,
                     timeout=None
                     if self._max_train_timeout is None
