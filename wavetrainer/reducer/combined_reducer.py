@@ -18,6 +18,7 @@ from .unseen_reducer import UnseenReducer
 
 _COMBINED_REDUCER_FILE = "combined_reducer.json"
 _REDUCERS_KEY = "reducers"
+_REMOVED_COLUMNS_FILE = "combined_reducer_removed_columns.json"
 
 
 class CombinedReducer(Reducer):
@@ -35,6 +36,7 @@ class CombinedReducer(Reducer):
             CorrelationReducer(),
             SmartCorrelationReducer(),
         ]
+        self._folder = None
 
     @classmethod
     def name(cls) -> str:
@@ -67,6 +69,7 @@ class CombinedReducer(Reducer):
                     self._reducers.append(SmartCorrelationReducer())
         for reducer in self._reducers:
             reducer.load(folder)
+        self._folder = folder
 
     def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         with open(
@@ -89,17 +92,19 @@ class CombinedReducer(Reducer):
         eval_x: pd.DataFrame | None = None,
         eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
+        removed_columns_dict = {}
         for reducer in self._reducers:
             before_columns = set(df.columns.values)
             df = reducer.fit_transform(df)
             after_columns = set(df.columns.values)
             removed_columns = before_columns.difference(after_columns)
             if removed_columns:
-                logging.info(
-                    "Removed columns %s using %s",
-                    ",".join(removed_columns),
-                    reducer.name(),
-                )
+                removed_columns_dict[reducer.name()] = list(removed_columns)
+        if self._folder is not None:
+            with open(
+                os.path.join(self._folder, _REMOVED_COLUMNS_FILE), encoding="utf8"
+            ) as handle:
+                json.dump(removed_columns_dict, handle)
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:

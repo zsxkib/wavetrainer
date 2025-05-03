@@ -37,7 +37,7 @@ _TEST_SIZE_KEY = "test_size"
 _VALIDATION_SIZE_KEY = "validation_size"
 _IDX_USR_ATTR_KEY = "idx"
 _DT_COLUMN_KEY = "dt_column"
-_BAD_OUTPUT = -1.0
+_BAD_OUTPUT = -1000.0
 
 
 def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
@@ -345,7 +345,10 @@ class Trainer(Fit):
                     if self._max_train_timeout is None
                     else self._max_train_timeout.total_seconds(),
                 )
-            while study.best_trial.value is None or study.best_trial.value != _BAD_OUTPUT:
+            while (
+                study.best_trial.value is None or study.best_trial.value == _BAD_OUTPUT
+            ):
+                logging.info("Performing extra train")
                 study.optimize(
                     test_objective,
                     n_trials=1,
@@ -387,7 +390,7 @@ class Trainer(Fit):
 
                 test_df = df.iloc[: train_len + count + test_len]
                 test_series = y_series.iloc[: train_len + count + test_len]
-                if len(test_df) <= 2:
+                if len(test_df) <= 3:
                     continue
 
                 if test_idx < start_validation_index:
