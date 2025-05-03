@@ -162,6 +162,7 @@ class CatboostModel(Model):
             raise ValueError("y is null.")
         self._model_type = determine_model_type(y)
         catboost = self._provide_catboost()
+        logging.info("Fitting catboost model with depth %d", self._depth)
 
         train_pool = Pool(
             df,
