@@ -162,7 +162,6 @@ class CatboostModel(Model):
             raise ValueError("y is null.")
         self._model_type = determine_model_type(y)
         catboost = self._provide_catboost()
-        logging.info("Fitting catboost model with depth %d", self._depth)
 
         train_pool = Pool(
             df,
@@ -217,6 +216,7 @@ class CatboostModel(Model):
             iterations = (
                 best_iteration if best_iteration is not None else self._iterations
             )
+            logging.info("Creating catboost model with depth %d", self._depth)
             match self._model_type:
                 case ModelType.BINARY:
                     catboost = CatBoostClassifierWrapper(
