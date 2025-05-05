@@ -216,7 +216,11 @@ class CatboostModel(Model):
             iterations = (
                 best_iteration if best_iteration is not None else self._iterations
             )
-            logging.info("Creating catboost model with depth %d", self._depth)
+            logging.info(
+                "Creating catboost model with depth %d, boosting type %s",
+                self._depth,
+                self._boosting_type,
+            )
             match self._model_type:
                 case ModelType.BINARY:
                     catboost = CatBoostClassifierWrapper(
