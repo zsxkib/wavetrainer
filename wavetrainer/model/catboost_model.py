@@ -175,9 +175,11 @@ class CatboostModel(Model):
                 label=eval_y,
                 cat_features=eval_x.select_dtypes(include="category").columns.tolist(),
             )
-            if eval_x is not None and self._best_iteration is not None
+            if eval_x is not None
             else None
         )
+        if self._best_iteration is not None:
+            eval_pool = None
         catboost.fit(
             train_pool,
             early_stopping_rounds=self._early_stopping_rounds,
