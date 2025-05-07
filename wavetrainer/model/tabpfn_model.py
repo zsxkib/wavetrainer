@@ -2,6 +2,7 @@
 # pylint: disable=duplicate-code,too-many-arguments,too-many-positional-arguments
 
 import json
+import logging
 import os
 import pickle
 from typing import Any, Self
@@ -13,6 +14,7 @@ import torch
 from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import (  # type: ignore
     AutoTabPFNClassifier, AutoTabPFNRegressor)
 
+from ..exceptions import WavetrainException
 from ..model_type import ModelType, determine_model_type
 from .model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
 
@@ -104,7 +106,11 @@ class TabPFNModel(Model):
             raise ValueError("y is null.")
         self._model_type = determine_model_type(y)
         tabpfn = self._provide_tabpfn()
-        tabpfn.fit(df, y)
+        try:
+            tabpfn.fit(df, y)
+        except ValueError as exc:
+            logging.warning(str(exc))
+            raise WavetrainException() from exc
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:

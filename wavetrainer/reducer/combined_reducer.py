@@ -13,6 +13,8 @@ from .correlation_reducer import CorrelationReducer
 from .duplicate_reducer import DuplicateReducer
 from .nonnumeric_reducer import NonNumericReducer
 from .reducer import Reducer
+from .select_by_single_feature_performance_reducer import \
+    SelectBySingleFeaturePerformanceReducer
 from .smart_correlation_reducer import SmartCorrelationReducer
 from .unseen_reducer import UnseenReducer
 
@@ -35,6 +37,7 @@ class CombinedReducer(Reducer):
             DuplicateReducer(),
             CorrelationReducer(),
             SmartCorrelationReducer(),
+            SelectBySingleFeaturePerformanceReducer(),
         ]
         self._folder = None
 
@@ -67,6 +70,8 @@ class CombinedReducer(Reducer):
                     self._reducers.append(UnseenReducer())
                 elif reducer_name == SmartCorrelationReducer.name():
                     self._reducers.append(SmartCorrelationReducer())
+                elif reducer_name == SelectBySingleFeaturePerformanceReducer.name():
+                    self._reducers.append(SelectBySingleFeaturePerformanceReducer())
         for reducer in self._reducers:
             reducer.load(folder)
         self._folder = folder
@@ -95,7 +100,7 @@ class CombinedReducer(Reducer):
         removed_columns_dict = {}
         for reducer in self._reducers:
             before_columns = set(df.columns.values)
-            df = reducer.fit_transform(df)
+            df = reducer.fit_transform(df, y=y)
             after_columns = set(df.columns.values)
             removed_columns = before_columns.difference(after_columns)
             if removed_columns:

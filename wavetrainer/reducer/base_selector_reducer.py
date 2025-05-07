@@ -56,8 +56,8 @@ class BaseSelectorReducer(Reducer):
         if len(df.columns) <= 1:
             return self
         try:
-            self._base_selector.fit(df)  # type: ignore
-        except ValueError as exc:
+            self._base_selector.fit(df, y=y)  # type: ignore
+        except (ValueError, AttributeError) as exc:
             logging.warning(str(exc))
             if self.should_raise():
                 raise WavetrainException() from exc
@@ -66,4 +66,10 @@ class BaseSelectorReducer(Reducer):
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         if len(df.columns) <= 1:
             return df
-        return self._base_selector.transform(df)
+        try:
+            return self._base_selector.transform(df)
+        except (ValueError, AttributeError) as exc:
+            logging.warning(str(exc))
+            if self.should_raise():
+                raise WavetrainException() from exc
+            return df

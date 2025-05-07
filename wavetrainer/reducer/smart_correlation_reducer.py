@@ -29,6 +29,10 @@ class SmartCorrelationReducer(BaseSelectorReducer):
     def name(cls) -> str:
         return "smart_correlation"
 
+    @classmethod
+    def should_raise(cls) -> bool:
+        return False
+
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:

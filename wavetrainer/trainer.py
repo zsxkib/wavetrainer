@@ -244,7 +244,7 @@ class Trainer(Fit):
                     # Perform common reductions
                     reducer = CombinedReducer()
                     reducer.set_options(trial, x)
-                    x_train = reducer.fit_transform(x_train)
+                    x_train = reducer.fit_transform(x_train, y=y_train)
                     x_test = reducer.transform(x_test)
 
                     # Calculate the row weights
