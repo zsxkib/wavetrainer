@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import time
 from typing import Self
 
 import optuna
@@ -37,7 +38,7 @@ class CombinedReducer(Reducer):
             DuplicateReducer(),
             CorrelationReducer(),
             SmartCorrelationReducer(),
-            SelectBySingleFeaturePerformanceReducer(),
+            # SelectBySingleFeaturePerformanceReducer(),
         ]
         self._folder = None
 
@@ -99,12 +100,16 @@ class CombinedReducer(Reducer):
     ) -> Self:
         removed_columns_dict = {}
         for reducer in self._reducers:
+            start_reducer = time.time()
             before_columns = set(df.columns.values)
             df = reducer.fit_transform(df, y=y)
             after_columns = set(df.columns.values)
             removed_columns = before_columns.difference(after_columns)
             if removed_columns:
                 removed_columns_dict[reducer.name()] = list(removed_columns)
+            logging.info(
+                "%s reducer took %f", reducer.name(), time.time() - start_reducer
+            )
         if self._folder is not None:
             with open(
                 os.path.join(self._folder, _REMOVED_COLUMNS_FILE), encoding="utf8"

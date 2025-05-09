@@ -148,7 +148,7 @@ class CatboostModel(Model):
             )
         catboost = self._provide_catboost()
         catboost.save_model(os.path.join(folder, _MODEL_FILENAME))
-        trial.user_attrs[_BEST_ITERATION_KEY] = self._best_iteration
+        trial.set_user_attr(_BEST_ITERATION_KEY, self._best_iteration)
 
     def fit(
         self,
@@ -219,9 +219,10 @@ class CatboostModel(Model):
                 best_iteration if best_iteration is not None else self._iterations
             )
             logging.info(
-                "Creating catboost model with depth %d, boosting type %s",
+                "Creating catboost model with depth %d, boosting type %s, best iteration %d",
                 self._depth,
                 self._boosting_type,
+                best_iteration,
             )
             match self._model_type:
                 case ModelType.BINARY:

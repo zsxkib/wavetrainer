@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import pickle
+import time
 from typing import Self
 
 import optuna
@@ -231,6 +232,7 @@ class Trainer(Fit):
 
                 try:
                     # Window the data
+                    start_windower = time.time()
                     windower = Windower(self._dt_column)
                     windower.set_options(trial, x)
                     x_train = windower.fit_transform(x_train)
@@ -240,25 +242,31 @@ class Trainer(Fit):
                             os.removedirs(folder)
                         logging.warning("Y train only contains 1 unique datapoint.")
                         return _BAD_OUTPUT
+                    logging.info("Windowing took %f", time.time() - start_windower)
 
                     # Perform common reductions
+                    start_reducer = time.time()
                     reducer = CombinedReducer()
                     reducer.set_options(trial, x)
                     x_train = reducer.fit_transform(x_train, y=y_train)
                     x_test = reducer.transform(x_test)
+                    logging.info("Reducing took %f", time.time() - start_reducer)
 
                     # Calculate the row weights
+                    start_row_weights = time.time()
                     weights = CombinedWeights()
                     weights.set_options(trial, x)
                     w = weights.fit(x_train, y=y_train).transform(y_train.to_frame())[
                         WEIGHTS_COLUMN
                     ]
+                    logging.info("Row weights took %f", time.time() - start_row_weights)
 
                     # Create model
                     model = ModelRouter()
                     model.set_options(trial, x)
 
                     # Train
+                    start_train = time.time()
                     selector = Selector(model)
                     selector.set_options(trial, x)
                     selector.fit(x_train, y=y_train, w=w, eval_x=x_test, eval_y=y_test)
@@ -267,11 +275,14 @@ class Trainer(Fit):
                     x_pred = model.fit_transform(
                         x_train, y=y_train, w=w, eval_x=x_test, eval_y=y_test
                     )
+                    logging.info("Training took %f", time.time() - start_train)
 
                     # Calibrate
+                    start_calibrate = time.time()
                     calibrator = CalibratorRouter(model)
                     calibrator.set_options(trial, x)
                     calibrator.fit(x_pred, y=y_train)
+                    logging.info("Calibrating took %f", time.time() - start_calibrate)
 
                     # Output
                     y_pred = model.transform(x_test)
@@ -521,8 +532,11 @@ class Trainer(Fit):
                 date_path = os.path.join(column_path, date_str)
                 if not os.path.isdir(date_path):
                     continue
-                model = ModelRouter()
-                model.load(date_path)
-                feature_importances[date_str] = model.feature_importances
+                try:
+                    model = ModelRouter()
+                    model.load(date_path)
+                    feature_importances[date_str] = model.feature_importances
+                except FileNotFoundError as exc:
+                    logging.warning(str(exc))
 
         return feature_importances
