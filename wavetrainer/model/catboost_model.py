@@ -222,7 +222,7 @@ class CatboostModel(Model):
                 "Creating catboost model with depth %d, boosting type %s, best iteration %d",
                 self._depth,
                 self._boosting_type,
-                best_iteration,
+                -1 if best_iteration is None else best_iteration,
             )
             match self._model_type:
                 case ModelType.BINARY:
