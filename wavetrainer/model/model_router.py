@@ -7,15 +7,17 @@ from typing import Any, Self
 import optuna
 import pandas as pd
 
-from .catboost_model import CatboostModel
+from .catboost.catboost_model import CatboostModel
 from .model import Model
-from .tabpfn_model import TabPFNModel
+from .tabpfn.tabpfn_model import TabPFNModel
+from .xgboost.xgboost_model import XGBoostModel
 
 _MODEL_ROUTER_FILE = "model_router.json"
 _MODEL_KEY = "model"
 _MODELS = {
     CatboostModel.name(): CatboostModel,
     TabPFNModel.name(): TabPFNModel,
+    XGBoostModel.name(): XGBoostModel,
 }
 
 

@@ -78,7 +78,9 @@ class CalibratorRouter(Calibrator):
     ) -> Self:
         # pylint: disable=no-else-return
         calibrator: Calibrator | None = None
-        if determine_model_type(df) == ModelType.REGRESSION:
+        if y is None:
+            raise ValueError("y is null")
+        if determine_model_type(y) == ModelType.REGRESSION:
             calibrator = MAPIECalibrator(self._model)
         else:
             calibrator = VennabersCalibrator(self._model)

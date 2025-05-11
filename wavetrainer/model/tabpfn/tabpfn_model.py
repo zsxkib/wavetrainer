@@ -14,9 +14,9 @@ import torch
 from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import (  # type: ignore
     AutoTabPFNClassifier, AutoTabPFNRegressor)
 
-from ..exceptions import WavetrainException
-from ..model_type import ModelType, determine_model_type
-from .model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
+from ...exceptions import WavetrainException
+from ...model_type import ModelType, determine_model_type
+from ..model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
 
 _MODEL_FILENAME = "model.pkl"
 _MODEL_PARAMS_FILENAME = "model_params.json"

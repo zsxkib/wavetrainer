@@ -41,5 +41,6 @@ class NonNumericReducer(Reducer):
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         categorical_cols = df.select_dtypes(include="category").columns.tolist()
         numeric_cols = df.select_dtypes(include="number").columns.tolist()
-        keep_cols = categorical_cols + numeric_cols
+        boolean_cols = df.select_dtypes(include="bool").columns.tolist()
+        keep_cols = categorical_cols + numeric_cols + boolean_cols
         return df[keep_cols]

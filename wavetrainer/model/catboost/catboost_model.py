@@ -10,12 +10,12 @@ import pandas as pd
 import torch
 from catboost import CatBoost, Pool  # type: ignore
 
-from ..model_type import ModelType, determine_model_type
+from ...model_type import ModelType, determine_model_type
+from ..model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
 from .catboost_classifier_wrap import CatBoostClassifierWrapper
 from .catboost_kwargs import (CAT_FEATURES_ARG_KEY, EVAL_SET_ARG_KEY,
                               ORIGINAL_X_ARG_KEY)
 from .catboost_regressor_wrap import CatBoostRegressorWrapper
-from .model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
 
 _MODEL_FILENAME = "model.cbm"
 _MODEL_PARAMS_FILENAME = "model_params.json"

@@ -27,10 +27,8 @@ Python 3.11.6:
 - [pytz](https://pythonhosted.org/pytz/)
 - [torch](https://pytorch.org/)
 - [tabpfn](https://github.com/PriorLabs/TabPFN)
-- [tabpfn-extensions](https://github.com/PriorLabs/tabpfn-extensions)
-- [shap](https://shap.readthedocs.io/en/latest/)
-- [hyperopt](https://hyperopt.github.io/hyperopt/)
 - [pytest-is-running](https://github.com/adamchainz/pytest-is-running)
+- [xgboost](https://xgboost.readthedocs.io/en/release_3.0.0/)
 
 ## Raison D'être :thought_balloon:
 

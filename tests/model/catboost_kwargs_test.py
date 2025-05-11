@@ -3,7 +3,7 @@ import unittest
 
 import pandas as pd
 
-from wavetrainer.model.catboost_kwargs import handle_fit_kwargs
+from wavetrainer.model.catboost.catboost_kwargs import handle_fit_kwargs
 
 
 class TestCatboostKwargs(unittest.TestCase):

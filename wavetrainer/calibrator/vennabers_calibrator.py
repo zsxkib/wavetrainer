@@ -1,5 +1,6 @@
 """A calibrator that implements venn abers."""
 
+import logging
 import os
 from typing import Self
 
@@ -54,7 +55,11 @@ class VennabersCalibrator(Calibrator):
         prob_columns = [
             x for x in df.columns.values if x.startswith(PROBABILITY_COLUMN_PREFIX)
         ]
-        vennabers.fit(df[prob_columns].to_numpy(), y.to_numpy())
+        try:
+            vennabers.fit(df[prob_columns].to_numpy(), y.to_numpy())
+        except IndexError:
+            logging.error(df)
+            raise
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
