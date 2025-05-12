@@ -1,6 +1,6 @@
 """The selector class."""
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,line-too-long
 import functools
 import json
 import logging
@@ -59,12 +59,12 @@ class Selector(Params, Fit):
             raise ValueError("y is not a series.")
         if len(df.columns) <= 1:
             return self
-        n_features_to_select = max(1, int(len(df.columns) * self._feature_ratio))
-        steps = int((len(df.columns) - n_features_to_select) / self._steps)
+        print(
+            f"Performing feature selection with {self._steps} steps and a total ratio of {self._feature_ratio}"
+        )
         current_features = df.columns.values.tolist()
-        self._model.fit(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)
 
-        def set_current_features():
+        def set_current_features(required_features: int):
             nonlocal current_features
             feature_importances = self._model.feature_importances
             if not feature_importances:
@@ -80,24 +80,27 @@ class Selector(Params, Fit):
             )
             if not current_features:
                 current_features = [list(feature_importances.keys())[0]]
+            current_features = current_features[:required_features]
 
-        for i in range(steps):
+        n_features = len(current_features)
+        for i in range(self._steps):
             print(
                 f"Recursive Feature Elimination Step {i}, current features: {len(current_features)}"
             )
             ratio_diff = 1.0 - self._feature_ratio
-            ratio_step = ratio_diff / float(steps)
+            ratio_step = ratio_diff / float(self._steps)
             current_ratio = 1.0 - (ratio_step * i)
             n_features = max(1, int(len(df.columns) * current_ratio))
             if n_features >= len(current_features):
                 continue
-            set_current_features()
+
+            self._model.fit(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)
+            set_current_features(n_features)
             print(f"Reduced features to {len(current_features)}")
             df = df[current_features]
             if eval_x is not None:
                 eval_x = eval_x[current_features]
-            self._model.fit(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)
-        set_current_features()
+
         self._selector = current_features
 
         return self
