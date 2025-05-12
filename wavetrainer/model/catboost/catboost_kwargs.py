@@ -38,12 +38,13 @@ def handle_fit_kwargs(*args, **kwargs) -> tuple[tuple[Any, ...], dict[str, Any]]
         args_list[0] = df[included_columns]
         args = tuple(args_list)
 
-        eval_x = eval_x[included_columns]
-        kwargs[EVAL_SET_ARG_KEY] = Pool(
-            eval_x,
-            label=eval_y,
-            cat_features=cat_features,
-        )
+        if eval_x is not None:
+            eval_x = eval_x[included_columns]
+            kwargs[EVAL_SET_ARG_KEY] = Pool(
+                eval_x,
+                label=eval_y,
+                cat_features=cat_features,
+            )
         kwargs[CAT_FEATURES_ARG_KEY] = cat_features
 
         del kwargs[ORIGINAL_X_ARG_KEY]

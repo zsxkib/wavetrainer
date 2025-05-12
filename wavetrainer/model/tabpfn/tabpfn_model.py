@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import pickle
-from typing import Any, Self
+from typing import Self
 
 import optuna
 import pandas as pd
@@ -43,10 +43,6 @@ class TabPFNModel(Model):
         self._model_type = None
 
     @property
-    def estimator(self) -> Any:
-        return self._provide_tabpfn()
-
-    @property
     def supports_importances(self) -> bool:
         return False
 
@@ -54,18 +50,11 @@ class TabPFNModel(Model):
     def feature_importances(self) -> dict[str, float]:
         return {}
 
-    def pre_fit(
-        self,
-        df: pd.DataFrame,
-        y: pd.Series | pd.DataFrame | None,
-        eval_x: pd.DataFrame | None = None,
-        eval_y: pd.Series | pd.DataFrame | None = None,
-        w: pd.Series | None = None,
-    ):
-        if y is None:
-            raise ValueError("y is null.")
-        self._model_type = determine_model_type(y)
-        return {}
+    def provide_estimator(self):
+        return self._provide_tabpfn()
+
+    def create_estimator(self):
+        return self._create_tabpfn()
 
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
@@ -133,29 +122,34 @@ class TabPFNModel(Model):
     def _provide_tabpfn(self) -> AutoTabPFNClassifier | AutoTabPFNRegressor:
         tabpfn = self._tabpfn
         if tabpfn is None:
-            max_time = 1 if pytest_is_running.is_running() else 120
-            match self._model_type:
-                case ModelType.BINARY:
-                    tabpfn = AutoTabPFNClassifier(
-                        max_time=max_time,
-                        device="cuda" if torch.cuda.is_available() else "cpu",
-                    )
-                case ModelType.REGRESSION:
-                    tabpfn = AutoTabPFNRegressor(
-                        max_time=max_time,
-                        device="cuda" if torch.cuda.is_available() else "cpu",
-                    )
-                case ModelType.BINNED_BINARY:
-                    tabpfn = AutoTabPFNClassifier(
-                        max_time=max_time,
-                        device="cuda" if torch.cuda.is_available() else "cpu",
-                    )
-                case ModelType.MULTI_CLASSIFICATION:
-                    tabpfn = AutoTabPFNClassifier(
-                        max_time=max_time,
-                        device="cuda" if torch.cuda.is_available() else "cpu",
-                    )
+            tabpfn = self._create_tabpfn()
             self._tabpfn = tabpfn
         if tabpfn is None:
             raise ValueError("tabpfn is null")
         return tabpfn
+
+    def _create_tabpfn(self) -> AutoTabPFNClassifier | AutoTabPFNRegressor:
+        max_time = 1 if pytest_is_running.is_running() else 120
+        match self._model_type:
+            case ModelType.BINARY:
+                return AutoTabPFNClassifier(
+                    max_time=max_time,
+                    device="cuda" if torch.cuda.is_available() else "cpu",
+                )
+            case ModelType.REGRESSION:
+                return AutoTabPFNRegressor(
+                    max_time=max_time,
+                    device="cuda" if torch.cuda.is_available() else "cpu",
+                )
+            case ModelType.BINNED_BINARY:
+                return AutoTabPFNClassifier(
+                    max_time=max_time,
+                    device="cuda" if torch.cuda.is_available() else "cpu",
+                )
+            case ModelType.MULTI_CLASSIFICATION:
+                return AutoTabPFNClassifier(
+                    max_time=max_time,
+                    device="cuda" if torch.cuda.is_available() else "cpu",
+                )
+            case _:
+                raise ValueError(f"Unrecognised model type: {self._model_type}")

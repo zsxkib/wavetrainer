@@ -1,16 +1,18 @@
 """A model that wraps xgboost."""
-# pylint: disable=duplicate-code,too-many-arguments,too-many-positional-arguments,too-many-instance-attributes
+# pylint: disable=duplicate-code,too-many-arguments,too-many-positional-arguments,too-many-instance-attributes,line-too-long
 
 import json
 import os
-from typing import Any, Self
+from typing import Self
 
 import optuna
 import pandas as pd
 import torch
 from xgboost import XGBClassifier, XGBRegressor
 from xgboost.callback import TrainingCallback
+from xgboost.core import XGBoostError
 
+from ...exceptions import WavetrainException
 from ...model_type import ModelType, determine_model_type
 from ..model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
 from .early_stopper import XGBoostEarlyStoppingCallback
@@ -20,6 +22,22 @@ _MODEL_FILENAME = "xgboost_model.json"
 _MODEL_PARAMS_FILENAME = "xgboost_model_params.json"
 _MODEL_TYPE_KEY = "model_type"
 _BEST_ITERATION_KEY = "best_iteration"
+_BOOSTER_KEY = "booster"
+_LAMBDA_KEY = "lambda"
+_ALPHA_KEY = "alpha"
+_SUBSAMPLE_KEY = "subsample"
+_COLSAMPLE_BYTREE_KEY = "colsample_bytree"
+_MAX_DEPTH_KEY = "max_depth"
+_MIN_CHILD_WEIGHT_KEY = "min_child_weight"
+_ETA_KEY = "eta"
+_GAMMA_KEY = "gamma"
+_GROW_POLICY_KEY = "grow_policy"
+_SAMPLE_TYPE_KEY = "sample_type"
+_NORMALIZE_TYPE_KEY = "normalize_type"
+_RATE_DROP_KEY = "rate_drop"
+_SKIP_DROP_KEY = "skip_drop"
+_NUM_BOOST_ROUNDS_KEY = "num_boost_rounds"
+_EARLY_STOPPING_ROUNDS_KEY = "early_stopping_rounds"
 
 
 def _convert_categoricals(input_df: pd.DataFrame) -> pd.DataFrame:
@@ -83,66 +101,52 @@ class XGBoostModel(Model):
         self._best_iteration = None
 
     @property
-    def estimator(self) -> Any:
-        return self._provide_xgboost()
-
-    @property
     def supports_importances(self) -> bool:
         return True
 
     @property
     def feature_importances(self) -> dict[str, float]:
         bst = self._provide_xgboost()
-        return bst.get_score(importance_type="weight")  # type: ignore
+        return bst.get_booster().get_score(importance_type="weight")  # type: ignore
 
-    def pre_fit(
-        self,
-        df: pd.DataFrame,
-        y: pd.Series | pd.DataFrame | None,
-        eval_x: pd.DataFrame | None = None,
-        eval_y: pd.Series | pd.DataFrame | None = None,
-        w: pd.Series | None = None,
-    ):
-        if y is None:
-            raise ValueError("y is null.")
-        self._model_type = determine_model_type(y)
-        return {
-            "eval_set": (eval_x, eval_y),
-            "sample_weight": w,
-        }
+    def provide_estimator(self):
+        return self._provide_xgboost()
+
+    def create_estimator(self):
+        return self._create_xgboost()
 
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:
         self._booster = trial.suggest_categorical(
-            "booster", ["gbtree", "gblinear", "dart"]
+            _BOOSTER_KEY, ["gbtree", "gblinear", "dart"]
         )
-        self._lambda = trial.suggest_float("lambda", 1e-8, 1.0, log=True)
-        self._alpha = trial.suggest_float("alpha", 1e-8, 1.0, log=True)
-        self._subsample = trial.suggest_float("subsample", 0.2, 1.0)
-        self._colsample_bytree = trial.suggest_float("colsample_bytree", 0.2, 1.0)
+        self._lambda = trial.suggest_float(_LAMBDA_KEY, 1e-8, 1.0, log=True)
+        self._alpha = trial.suggest_float(_ALPHA_KEY, 1e-8, 1.0, log=True)
+        self._subsample = trial.suggest_float(_SUBSAMPLE_KEY, 0.2, 1.0)
+        self._colsample_bytree = trial.suggest_float(_COLSAMPLE_BYTREE_KEY, 0.2, 1.0)
         if self._booster in ["gbtree", "dart"]:
-            self._max_depth = trial.suggest_int("max_depth", 3, 9, step=2)
+            self._max_depth = trial.suggest_int(_MAX_DEPTH_KEY, 3, 9)
             self._min_child_weight = trial.suggest_int(
-                "min_child_weight", 2, 10, log=True
+                _MIN_CHILD_WEIGHT_KEY, 2, 10, log=True
             )
-            self._eta = trial.suggest_float("eta", 1e-8, 1.0, log=True)
-            self._gamma = trial.suggest_float("gamma", 1e-8, 1.0, log=True)
+            self._eta = trial.suggest_float(_ETA_KEY, 1e-8, 1.0, log=True)
+            self._gamma = trial.suggest_float(_GAMMA_KEY, 1e-8, 1.0, log=True)
             self._grow_policy = trial.suggest_categorical(
-                "grow_policy", ["depthwise", "lossguide"]
+                _GROW_POLICY_KEY, ["depthwise", "lossguide"]
             )
         else:
             self._sample_type = trial.suggest_categorical(
-                "sample_type", ["uniform", "weighted"]
+                _SAMPLE_TYPE_KEY, ["uniform", "weighted"]
             )
             self._normalize_type = trial.suggest_categorical(
-                "normalize_type", ["tree", "forest"]
+                _NORMALIZE_TYPE_KEY, ["tree", "forest"]
             )
-            self._rate_drop = trial.suggest_float("rate_drop", 1e-8, 1.0, log=True)
-            self._skip_drop = trial.suggest_float("skip_drop", 1e-8, 1.0, log=True)
-        self._num_boost_rounds = trial.suggest_int("num_boost_rounds", 100, 10000)
+            self._rate_drop = trial.suggest_float(_RATE_DROP_KEY, 1e-8, 1.0, log=True)
+            self._skip_drop = trial.suggest_float(_SKIP_DROP_KEY, 1e-8, 1.0, log=True)
+        self._num_boost_rounds = trial.suggest_int(_NUM_BOOST_ROUNDS_KEY, 100, 10000)
         self._early_stopping_rounds = trial.suggest_int(
-            "early_stopping_rounds", 50, 500
+            _EARLY_STOPPING_ROUNDS_KEY, 50, 500
         )
         self._best_iteration = trial.user_attrs.get(_BEST_ITERATION_KEY)
 
@@ -152,6 +156,22 @@ class XGBoostModel(Model):
         ) as handle:
             params = json.load(handle)
             self._model_type = ModelType(params[_MODEL_TYPE_KEY])
+            self._booster = params[_BOOSTER_KEY]
+            self._lambda = params[_LAMBDA_KEY]
+            self._alpha = params[_ALPHA_KEY]
+            self._subsample = params[_SUBSAMPLE_KEY]
+            self._colsample_bytree = params[_COLSAMPLE_BYTREE_KEY]
+            self._max_depth = params[_MAX_DEPTH_KEY]
+            self._min_child_weight = params[_MIN_CHILD_WEIGHT_KEY]
+            self._eta = params[_ETA_KEY]
+            self._gamma = params[_GAMMA_KEY]
+            self._grow_policy = params[_GROW_POLICY_KEY]
+            self._sample_type = params[_SAMPLE_TYPE_KEY]
+            self._normalize_type = params[_NORMALIZE_TYPE_KEY]
+            self._rate_drop = params[_RATE_DROP_KEY]
+            self._skip_drop = params[_SKIP_DROP_KEY]
+            self._num_boost_rounds = params[_NUM_BOOST_ROUNDS_KEY]
+            self._early_stopping_rounds = params[_EARLY_STOPPING_ROUNDS_KEY]
             self._best_iteration = params.get(_BEST_ITERATION_KEY)
         bst = self._provide_xgboost()
         bst.load_model(os.path.join(folder, _MODEL_FILENAME))
@@ -166,6 +186,22 @@ class XGBoostModel(Model):
                 {
                     _MODEL_TYPE_KEY: str(self._model_type),
                     _BEST_ITERATION_KEY: self._best_iteration,
+                    _BOOSTER_KEY: self._booster,
+                    _LAMBDA_KEY: self._lambda,
+                    _ALPHA_KEY: self._alpha,
+                    _SUBSAMPLE_KEY: self._subsample,
+                    _COLSAMPLE_BYTREE_KEY: self._colsample_bytree,
+                    _MAX_DEPTH_KEY: self._max_depth,
+                    _MIN_CHILD_WEIGHT_KEY: self._min_child_weight,
+                    _ETA_KEY: self._eta,
+                    _GAMMA_KEY: self._gamma,
+                    _GROW_POLICY_KEY: self._grow_policy,
+                    _SAMPLE_TYPE_KEY: self._sample_type,
+                    _NORMALIZE_TYPE_KEY: self._normalize_type,
+                    _RATE_DROP_KEY: self._rate_drop,
+                    _SKIP_DROP_KEY: self._skip_drop,
+                    _NUM_BOOST_ROUNDS_KEY: self._num_boost_rounds,
+                    _EARLY_STOPPING_ROUNDS_KEY: self._early_stopping_rounds,
                 },
                 handle,
             )
@@ -182,12 +218,13 @@ class XGBoostModel(Model):
         if y is None:
             raise ValueError("y is null.")
         self._model_type = determine_model_type(y)
-        xgboost = self._provide_xgboost()
+        xgboost = self._create_xgboost()
+        self._xgboost = xgboost
         df = _convert_categoricals(df)
         evals = [(df, y)]
         if eval_x is not None and eval_y is not None and self._best_iteration is None:
             eval_x = _convert_categoricals(eval_x)
-            evals.append((eval_x, eval_y))
+            evals = [(eval_x, eval_y), (df, y)]
         xgboost.fit(  # type: ignore
             df,
             y,
@@ -195,12 +232,17 @@ class XGBoostModel(Model):
             sample_weight=w,
             verbose=False,
         )
+        if eval_x is not None and eval_y is not None and self._best_iteration is None:
+            self._best_iteration = xgboost.best_iteration
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         x_df = _convert_categoricals(df)
         xgboost = self._provide_xgboost()
-        pred = xgboost.predict(x_df)
+        try:
+            pred = xgboost.predict(x_df)
+        except XGBoostError as exc:
+            raise WavetrainException() from exc
         df = pd.DataFrame(
             index=df.index,
             data={
@@ -216,62 +258,74 @@ class XGBoostModel(Model):
     def _provide_xgboost(self) -> XGBClassifier | XGBRegressor:
         xgboost = self._xgboost
         if xgboost is None:
-            callbacks: list[TrainingCallback] = [
-                XGBoostEpochsLogger(),
-            ]
-            if self._best_iteration is not None:
-                callbacks.append(
-                    XGBoostEarlyStoppingCallback(rounds=self._early_stopping_rounds)
-                )
-            param = {
-                "objective": "binary:logistic",
-                "tree_method": "gpu_hist" if torch.cuda.is_available() else "exact",
-                # defines booster, gblinear for linear functions.
-                "booster": self._booster,
-                # L2 regularization weight.
-                "reg_lambda": self._lambda,
-                # L1 regularization weight.
-                "alpha": self._alpha,
-                # sampling ratio for training data.
-                "subsample": self._subsample,
-                # sampling according to each tree.
-                "colsample_bytree": self._colsample_bytree,
-                "n_estimators": self._best_iteration
-                if self._best_iteration is not None
-                else self._num_boost_rounds,
-                "base_score": 0.5,
-                "verbosity": 0,
-                "verbose": False,
-                "callbacks": callbacks,
-                "eval_metric": ["logloss", "error"],
-            }
-            if param["booster"] in ["gbtree", "dart"]:
-                # maximum depth of the tree, signifies complexity of the tree.
-                param["max_depth"] = self._max_depth
-                # minimum child weight, larger the term more conservative the tree.
-                param["min_child_weight"] = self._min_child_weight
-                param["eta"] = self._eta
-                # defines how selective algorithm is.
-                param["gamma"] = self._gamma
-                param["grow_policy"] = self._grow_policy
-
-            if param["booster"] == "dart":
-                param["sample_type"] = self._sample_type
-                param["normalize_type"] = self._normalize_type
-                param["rate_drop"] = self._rate_drop
-                param["skip_drop"] = self._skip_drop
-            match self._model_type:
-                case ModelType.BINARY:
-                    xgboost = XGBClassifier(**param)
-                case ModelType.REGRESSION:
-                    param["objective"] = "reg:squarederror"
-                    param["eval_metric"] = ["rmse", "mae"]
-                    xgboost = XGBRegressor(**param)
-                case ModelType.BINNED_BINARY:
-                    xgboost = XGBClassifier(**param)
-                case ModelType.MULTI_CLASSIFICATION:
-                    xgboost = XGBClassifier(**param)
+            xgboost = self._create_xgboost()
             self._xgboost = xgboost
         if xgboost is None:
             raise ValueError("xgboost is null")
         return xgboost
+
+    def _create_xgboost(self) -> XGBClassifier | XGBRegressor:
+        callbacks: list[TrainingCallback] = [
+            XGBoostEpochsLogger(),
+        ]
+        best_iteration = self._best_iteration
+        if best_iteration is None:
+            callbacks.append(
+                XGBoostEarlyStoppingCallback(rounds=self._early_stopping_rounds)
+            )
+        param = {
+            "objective": "binary:logistic",
+            "tree_method": "gpu_hist" if torch.cuda.is_available() else "exact",
+            # defines booster, gblinear for linear functions.
+            "booster": self._booster,
+            # L2 regularization weight.
+            "reg_lambda": self._lambda,
+            # L1 regularization weight.
+            "alpha": self._alpha,
+            # sampling ratio for training data.
+            "subsample": self._subsample,
+            # sampling according to each tree.
+            "colsample_bytree": self._colsample_bytree,
+            "n_estimators": best_iteration
+            if best_iteration is not None
+            else self._num_boost_rounds,
+            "base_score": 0.5,
+            "verbosity": 0,
+            "verbose": True,
+            "callbacks": callbacks,
+            "eval_metric": ["logloss", "error"],
+            "use_label_encoder": False,
+        }
+        if param["booster"] in ["gbtree", "dart"]:
+            # maximum depth of the tree, signifies complexity of the tree.
+            param["max_depth"] = self._max_depth
+            # minimum child weight, larger the term more conservative the tree.
+            param["min_child_weight"] = self._min_child_weight
+            param["eta"] = self._eta
+            # defines how selective algorithm is.
+            param["gamma"] = self._gamma
+            param["grow_policy"] = self._grow_policy
+
+        if param["booster"] == "dart":
+            param["sample_type"] = self._sample_type
+            param["normalize_type"] = self._normalize_type
+            param["rate_drop"] = self._rate_drop
+            param["skip_drop"] = self._skip_drop
+        print(
+            f"Creating xgboost model with max_depth {self._max_depth}, best iteration {best_iteration}, booster: {self._booster}",
+        )
+        bst = None
+        match self._model_type:
+            case ModelType.BINARY:
+                bst = XGBClassifier(**param)
+            case ModelType.REGRESSION:
+                param["objective"] = "reg:squarederror"
+                param["eval_metric"] = ["rmse", "mae"]
+                bst = XGBRegressor(**param)
+            case ModelType.BINNED_BINARY:
+                bst = XGBClassifier(**param)
+            case ModelType.MULTI_CLASSIFICATION:
+                bst = XGBClassifier(**param)
+            case _:
+                raise ValueError(f"Unrecognised model type: {self._model_type}")
+        return bst

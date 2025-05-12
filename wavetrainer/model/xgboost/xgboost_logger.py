@@ -15,6 +15,10 @@ class XGBoostEpochsLogger(TrainingCallback):
             return False
         log_items = []
         for dataset, metrics in evals_log.items():
+            if dataset == "validation_0":
+                dataset = "validation"
+            elif dataset == "validation_1":
+                dataset = "train"
             for metric_name, values in metrics.items():
                 current_val = values[-1]
                 log_items.append(f"{dataset}-{metric_name}: {current_val:.5f}")

@@ -1,13 +1,11 @@
 """A calibrator that implements MAPIE."""
 
-import logging
 import os
 from typing import Self
 
 import joblib  # type: ignore
 import optuna
 import pandas as pd
-import sklearn  # type: ignore
 from mapie.regression import MapieRegressor  # type: ignore
 
 from ..model.model import PROBABILITY_COLUMN_PREFIX, Model
@@ -23,11 +21,14 @@ class MAPIECalibrator(Calibrator):
 
     def __init__(self, model: Model):
         super().__init__(model)
-        self._mapie = MapieRegressor(model.estimator, method="plus")
+        self._mapie = MapieRegressor(model.create_estimator(), method="plus")
 
     @classmethod
     def name(cls) -> str:
         return "mapie"
+
+    def predictions_as_x(self, y: pd.Series | pd.DataFrame | None = None) -> bool:
+        return False
 
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
@@ -59,20 +60,18 @@ class MAPIECalibrator(Calibrator):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        try:
-            alpha = []
-            for potential_alpha in [0.05, 0.32]:
-                if len(df) > int(1.0 / potential_alpha) + 1:
-                    alpha.append(potential_alpha)
-            if alpha:
-                _, y_pis = self._mapie.predict(df, alpha=alpha)
-                for i in range(y_pis.shape[1]):
-                    if i >= len(alpha):
-                        continue
-                    for ii in range(y_pis.shape[2]):
-                        alpha_val = alpha[i]
-                        values = y_pis[:, i, ii].flatten().tolist()
-                        df[f"{PROBABILITY_COLUMN_PREFIX}{alpha_val}_{ii == 1}"] = values
-        except sklearn.exceptions.NotFittedError as exc:  # type: ignore
-            logging.warning(str(exc))
-        return df
+        alpha = []
+        for potential_alpha in [0.05, 0.32]:
+            if len(df) > int(1.0 / potential_alpha) + 1:
+                alpha.append(potential_alpha)
+        ret_df = pd.DataFrame(index=df.index)
+        if alpha:
+            _, y_pis = self._mapie.predict(df, alpha=alpha)
+            for i in range(y_pis.shape[1]):
+                if i >= len(alpha):
+                    continue
+                for ii in range(y_pis.shape[2]):
+                    alpha_val = alpha[i]
+                    values = y_pis[:, i, ii].flatten().tolist()
+                    ret_df[f"{PROBABILITY_COLUMN_PREFIX}{alpha_val}_{ii == 1}"] = values
+        return ret_df

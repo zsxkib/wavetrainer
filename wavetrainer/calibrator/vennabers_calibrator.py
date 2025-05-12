@@ -28,6 +28,9 @@ class VennabersCalibrator(Calibrator):
     def name(cls) -> str:
         return "vennabers"
 
+    def predictions_as_x(self, y: pd.Series | pd.DataFrame | None = None) -> bool:
+        return True
+
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:

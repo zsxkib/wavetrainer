@@ -205,6 +205,7 @@ class Trainer(Fit):
                 y_series: pd.Series,
                 save: bool,
                 split_idx: datetime.datetime,
+                no_evaluation: bool,
             ) -> float:
                 print(f"Beginning trial for: {split_idx.isoformat()}")
                 trial.set_user_attr(_IDX_USR_ATTR_KEY, split_idx.isoformat())
@@ -242,7 +243,7 @@ class Trainer(Fit):
                             os.removedirs(folder)
                         logging.warning("Y train only contains 1 unique datapoint.")
                         return _BAD_OUTPUT
-                    logging.info("Windowing took %f", time.time() - start_windower)
+                    print(f"Windowing took {time.time() - start_windower}")
 
                     # Perform common reductions
                     start_reducer = time.time()
@@ -250,7 +251,7 @@ class Trainer(Fit):
                     reducer.set_options(trial, x)
                     x_train = reducer.fit_transform(x_train, y=y_train)
                     x_test = reducer.transform(x_test)
-                    logging.info("Reducing took %f", time.time() - start_reducer)
+                    print(f"Reducing took {time.time() - start_reducer}")
 
                     # Calculate the row weights
                     start_row_weights = time.time()
@@ -259,34 +260,52 @@ class Trainer(Fit):
                     w = weights.fit(x_train, y=y_train).transform(y_train.to_frame())[
                         WEIGHTS_COLUMN
                     ]
-                    logging.info("Row weights took %f", time.time() - start_row_weights)
+                    print(f"Row weights took {time.time() - start_row_weights}")
 
                     # Create model
                     model = ModelRouter()
                     model.set_options(trial, x)
 
                     # Train
-                    start_train = time.time()
+                    start_selector = time.time()
                     selector = Selector(model)
                     selector.set_options(trial, x)
-                    selector.fit(x_train, y=y_train, w=w, eval_x=x_test, eval_y=y_test)
+                    selector.fit(
+                        x_train,
+                        y=y_train,
+                        w=w,
+                        eval_x=x_test if not no_evaluation else None,
+                        eval_y=y_test if not no_evaluation else None,
+                    )
                     x_train = selector.transform(x_train)
                     x_test = selector.transform(x_test)
+                    print(f"Selection took {time.time() - start_selector}")
+                    start_train = time.time()
                     x_pred = model.fit_transform(
-                        x_train, y=y_train, w=w, eval_x=x_test, eval_y=y_test
+                        x_train,
+                        y=y_train,
+                        w=w,
+                        eval_x=x_test if not no_evaluation else None,
+                        eval_y=y_test if not no_evaluation else None,
                     )
-                    logging.info("Training took %f", time.time() - start_train)
+                    print(f"Training took {time.time() - start_train}")
 
                     # Calibrate
                     start_calibrate = time.time()
                     calibrator = CalibratorRouter(model)
                     calibrator.set_options(trial, x)
-                    calibrator.fit(x_pred, y=y_train)
-                    logging.info("Calibrating took %f", time.time() - start_calibrate)
+                    calibrator.fit(
+                        x_pred if calibrator.predictions_as_x(y_train) else x_train,
+                        y=y_train,
+                    )
+                    print(f"Calibrating took {time.time() - start_calibrate}")
 
                     # Output
                     y_pred = model.transform(x_test)
-                    y_pred = calibrator.transform(y_pred)
+                    cal_pred = calibrator.transform(
+                        y_pred if calibrator.predictions_as_x(y_test) else x_test
+                    )
+                    cal_pred[PREDICTION_COLUMN] = y_pred[PREDICTION_COLUMN]
                     output = 0.0
                     if determine_model_type(y_series) == ModelType.REGRESSION:
                         output = float(r2_score(y_test, y_pred[[PREDICTION_COLUMN]]))
@@ -311,6 +330,7 @@ class Trainer(Fit):
 
                     return output
                 except WavetrainException as exc:
+                    print(str(exc))
                     logging.warning(str(exc))
                     if new_folder:
                         os.removedirs(folder)
@@ -342,6 +362,7 @@ class Trainer(Fit):
                     y_series[dt_index < start_validation_index],
                     False,
                     start_test_index.to_pydatetime(),
+                    False,
                 )
 
             initial_trials = 0
@@ -409,7 +430,7 @@ class Trainer(Fit):
                     def validate_objctive(
                         trial: optuna.Trial, idx: datetime.datetime, series: pd.Series
                     ) -> float:
-                        return _fit(trial, test_df, series, False, idx)
+                        return _fit(trial, test_df, series, False, idx, False)
 
                     study.optimize(
                         functools.partial(
@@ -421,7 +442,7 @@ class Trainer(Fit):
                         else self._max_train_timeout.total_seconds(),
                     )
 
-                _fit(study.best_trial, test_df, test_series, True, test_idx)
+                _fit(study.best_trial, test_df, test_series, True, test_idx, True)
                 last_processed_dt = test_idx
 
         if isinstance(y, pd.Series):

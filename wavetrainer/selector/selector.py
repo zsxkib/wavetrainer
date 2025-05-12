@@ -1,20 +1,20 @@
 """The selector class."""
 
+# pylint: disable=too-many-locals
+import functools
+import json
 import logging
 import os
 from typing import Self
 
-import joblib  # type: ignore
 import optuna
 import pandas as pd
-import sklearn  # type: ignore
-from sklearn.feature_selection import RFE  # type: ignore
 
 from ..fit import Fit
 from ..model.model import Model
 from ..params import Params
 
-_SELECTOR_FILE = "selector.joblib"
+_SELECTOR_FILE = "selector.json"
 
 
 class Selector(Params, Fit):
@@ -22,7 +22,7 @@ class Selector(Params, Fit):
 
     # pylint: disable=too-many-positional-arguments,too-many-arguments,consider-using-enumerate
 
-    _selector: RFE | None
+    _selector: list[str] | None
 
     def __init__(self, model: Model):
         super().__init__()
@@ -38,10 +38,12 @@ class Selector(Params, Fit):
         self._steps = trial.suggest_int("steps", 1, 10)
 
     def load(self, folder: str) -> None:
-        self._selector = joblib.load(os.path.join(folder, _SELECTOR_FILE))
+        with open(os.path.join(folder, _SELECTOR_FILE), encoding="utf8") as handle:
+            self._selector = json.load(handle)
 
     def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
-        joblib.dump(self._selector, os.path.join(folder, _SELECTOR_FILE))
+        with open(os.path.join(folder, _SELECTOR_FILE), "w", encoding="utf8") as handle:
+            json.dump(self._selector, handle)
 
     def fit(
         self,
@@ -53,26 +55,51 @@ class Selector(Params, Fit):
     ) -> Self:
         if not self._model.supports_importances:
             return self
-        sklearn.set_config(enable_metadata_routing=False)
-        model_kwargs = self._model.pre_fit(df, y=y, eval_x=eval_x, eval_y=eval_y, w=w)
         if not isinstance(y, pd.Series):
             raise ValueError("y is not a series.")
         if len(df.columns) <= 1:
             return self
         n_features_to_select = max(1, int(len(df.columns) * self._feature_ratio))
-        self._selector = RFE(
-            self._model.estimator,
-            n_features_to_select=n_features_to_select,
-            step=max(
-                1,
-                int((len(df.columns) - n_features_to_select) / self._steps),
-            ),
-        )
-        try:
-            self._selector.fit(df, y=y, **model_kwargs)
-        except ValueError as exc:
-            # Catch issues with 1 feature as a reduction target.
-            logging.warning(str(exc))
+        steps = int((len(df.columns) - n_features_to_select) / self._steps)
+        current_features = df.columns.values.tolist()
+        self._model.fit(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)
+
+        def set_current_features():
+            nonlocal current_features
+            feature_importances = self._model.feature_importances
+            if not feature_importances:
+                return
+            current_features = sorted(
+                [
+                    x
+                    for x in current_features
+                    if x in feature_importances and feature_importances[x] > 0.0
+                ],
+                key=functools.partial(lambda x, f: f[x], f=feature_importances),
+                reverse=True,
+            )
+            if not current_features:
+                current_features = [list(feature_importances.keys())[0]]
+
+        for i in range(steps):
+            print(
+                f"Recursive Feature Elimination Step {i}, current features: {len(current_features)}"
+            )
+            ratio_diff = 1.0 - self._feature_ratio
+            ratio_step = ratio_diff / float(steps)
+            current_ratio = 1.0 - (ratio_step * i)
+            n_features = max(1, int(len(df.columns) * current_ratio))
+            if n_features >= len(current_features):
+                continue
+            set_current_features()
+            print(f"Reduced features to {len(current_features)}")
+            df = df[current_features]
+            if eval_x is not None:
+                eval_x = eval_x[current_features]
+            self._model.fit(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)
+        set_current_features()
+        self._selector = current_features
+
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -82,9 +109,4 @@ class Selector(Params, Fit):
         if selector is None:
             logging.warning("selector is null")
             return df
-        try:
-            return df[selector.get_feature_names_out()]
-        except AttributeError as exc:
-            # Catch issues with 1 feature as a reduction target.
-            logging.warning(str(exc))
-            return df
+        return df[self._selector]  # type: ignore

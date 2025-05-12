@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Any, Self
+from typing import Self
 
 import optuna
 import pandas as pd
@@ -41,13 +41,6 @@ class ModelRouter(Model):
         return True
 
     @property
-    def estimator(self) -> Any:
-        model = self._model
-        if model is None:
-            raise ValueError("model is null")
-        return model.estimator
-
-    @property
     def supports_importances(self) -> bool:
         model = self._model
         if model is None:
@@ -61,18 +54,17 @@ class ModelRouter(Model):
             raise ValueError("model is null")
         return model.feature_importances
 
-    def pre_fit(
-        self,
-        df: pd.DataFrame,
-        y: pd.Series | pd.DataFrame | None,
-        eval_x: pd.DataFrame | None = None,
-        eval_y: pd.Series | pd.DataFrame | None = None,
-        w: pd.Series | None = None,
-    ) -> dict[str, Any]:
+    def provide_estimator(self):
         model = self._model
         if model is None:
             raise ValueError("model is null")
-        return model.pre_fit(df, y=y, eval_x=eval_x, eval_y=eval_y, w=w)
+        return model.provide_estimator()
+
+    def create_estimator(self):
+        model = self._model
+        if model is None:
+            raise ValueError("model is null")
+        return model.create_estimator()
 
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame

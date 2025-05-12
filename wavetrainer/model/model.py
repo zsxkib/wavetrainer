@@ -26,11 +26,6 @@ class Model(Params, Fit):
         raise NotImplementedError("supports_x not implemented in parent class.")
 
     @property
-    def estimator(self) -> Any:
-        """The estimator backing the model."""
-        raise NotImplementedError("estimator not implemented in parent class.")
-
-    @property
     def supports_importances(self) -> bool:
         """Whether this model supports feature importances."""
         raise NotImplementedError(
@@ -44,13 +39,10 @@ class Model(Params, Fit):
             "feature_importances not implemented in parent class."
         )
 
-    def pre_fit(
-        self,
-        df: pd.DataFrame,
-        y: pd.Series | pd.DataFrame | None,
-        eval_x: pd.DataFrame | None = None,
-        eval_y: pd.Series | pd.DataFrame | None = None,
-        w: pd.Series | None = None,
-    ) -> dict[str, Any]:
-        """A call to make sure the model is prepared for the target type."""
-        raise NotImplementedError("pre_fit not implemented in parent class.")
+    def provide_estimator(self) -> Any:
+        """Provides the current estimator."""
+        raise NotImplementedError("provides_estimator not implemented in parent class.")
+
+    def create_estimator(self) -> Any:
+        """Creates a new estimator."""
+        raise NotImplementedError("creates_estimator not implemented in parent class.")

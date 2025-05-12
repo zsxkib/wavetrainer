@@ -29,10 +29,6 @@ class SmartCorrelationReducer(BaseSelectorReducer):
     def name(cls) -> str:
         return "smart_correlation"
 
-    @classmethod
-    def should_raise(cls) -> bool:
-        return False
-
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:
@@ -49,4 +45,6 @@ class SmartCorrelationReducer(BaseSelectorReducer):
         eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         self._correlation_selector.variables = find_non_categorical_numeric_columns(df)
+        if len(self._correlation_selector.variables) <= 1:
+            return self
         return super().fit(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)

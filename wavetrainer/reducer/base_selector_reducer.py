@@ -1,6 +1,5 @@
 """A reducer that uses a base selector from the feature engine."""
 
-import logging
 import os
 from typing import Self
 
@@ -8,8 +7,8 @@ import joblib  # type: ignore
 import optuna
 import pandas as pd
 from feature_engine.selection.base_selector import BaseSelector
+from sklearn.utils.validation import check_is_fitted  # type: ignore
 
-from ..exceptions import WavetrainException
 from .reducer import Reducer
 
 
@@ -55,21 +54,12 @@ class BaseSelectorReducer(Reducer):
     ) -> Self:
         if len(df.columns) <= 1:
             return self
-        try:
-            self._base_selector.fit(df, y=y)  # type: ignore
-        except (ValueError, AttributeError) as exc:
-            logging.warning(str(exc))
-            if self.should_raise():
-                raise WavetrainException() from exc
+        self._base_selector.fit(df, y=y)  # type: ignore
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         if len(df.columns) <= 1:
             return df
-        try:
-            return self._base_selector.transform(df)
-        except (ValueError, AttributeError) as exc:
-            logging.warning(str(exc))
-            if self.should_raise():
-                raise WavetrainException() from exc
+        if not check_is_fitted(self._base_selector):
             return df
+        return self._base_selector.transform(df)

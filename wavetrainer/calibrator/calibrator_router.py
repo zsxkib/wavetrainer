@@ -36,6 +36,13 @@ class CalibratorRouter(Calibrator):
     def name(cls) -> str:
         return "router"
 
+    def predictions_as_x(self, y: pd.Series | pd.DataFrame | None = None) -> bool:
+        if y is None:
+            raise ValueError("y is null")
+        if determine_model_type(y) == ModelType.REGRESSION:
+            return False
+        return True
+
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:

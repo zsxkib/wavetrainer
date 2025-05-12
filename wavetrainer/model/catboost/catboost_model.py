@@ -1,9 +1,10 @@
 """A model that wraps catboost."""
 
+# pylint: disable=line-too-long
 import json
 import logging
 import os
-from typing import Any, Self
+from typing import Self
 
 import optuna
 import pandas as pd
@@ -13,8 +14,6 @@ from catboost import CatBoost, Pool  # type: ignore
 from ...model_type import ModelType, determine_model_type
 from ..model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
 from .catboost_classifier_wrap import CatBoostClassifierWrapper
-from .catboost_kwargs import (CAT_FEATURES_ARG_KEY, EVAL_SET_ARG_KEY,
-                              ORIGINAL_X_ARG_KEY)
 from .catboost_regressor_wrap import CatBoostRegressorWrapper
 
 _MODEL_FILENAME = "model.cbm"
@@ -65,10 +64,6 @@ class CatboostModel(Model):
         self._best_iteration = None
 
     @property
-    def estimator(self) -> Any:
-        return self._provide_catboost()
-
-    @property
     def supports_importances(self) -> bool:
         return True
 
@@ -82,23 +77,11 @@ class CatboostModel(Model):
         importances = importances["Importances"].to_list()  # type: ignore
         return {feature_ids[x]: importances[x] for x in range(len(feature_ids))}
 
-    def pre_fit(
-        self,
-        df: pd.DataFrame,
-        y: pd.Series | pd.DataFrame | None,
-        eval_x: pd.DataFrame | None = None,
-        eval_y: pd.Series | pd.DataFrame | None = None,
-        w: pd.Series | None = None,
-    ):
-        if y is None:
-            raise ValueError("y is null.")
-        self._model_type = determine_model_type(y)
-        return {
-            EVAL_SET_ARG_KEY: (eval_x, eval_y),
-            CAT_FEATURES_ARG_KEY: df.select_dtypes(include="category").columns.tolist(),
-            ORIGINAL_X_ARG_KEY: df,
-            "sample_weight": w,
-        }
+    def provide_estimator(self):
+        return self._provide_catboost()
+
+    def create_estimator(self):
+        return self._create_catboost()
 
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
@@ -214,66 +197,66 @@ class CatboostModel(Model):
     def _provide_catboost(self) -> CatBoost:
         catboost = self._catboost
         if catboost is None:
-            best_iteration = self._best_iteration
-            iterations = (
-                best_iteration if best_iteration is not None else self._iterations
-            )
-            logging.info(
-                "Creating catboost model with depth %d, boosting type %s, best iteration %d",
-                self._depth,
-                self._boosting_type,
-                -1 if best_iteration is None else best_iteration,
-            )
-            match self._model_type:
-                case ModelType.BINARY:
-                    catboost = CatBoostClassifierWrapper(
-                        iterations=iterations,
-                        learning_rate=self._learning_rate,
-                        depth=self._depth,
-                        l2_leaf_reg=self._l2_leaf_reg,
-                        boosting_type=self._boosting_type,
-                        early_stopping_rounds=self._early_stopping_rounds,
-                        metric_period=100,
-                        task_type="GPU" if torch.cuda.is_available() else "CPU",
-                        devices="0" if torch.cuda.is_available() else None,
-                    )
-                case ModelType.REGRESSION:
-                    catboost = CatBoostRegressorWrapper(
-                        iterations=iterations,
-                        learning_rate=self._learning_rate,
-                        depth=self._depth,
-                        l2_leaf_reg=self._l2_leaf_reg,
-                        boosting_type=self._boosting_type,
-                        early_stopping_rounds=self._early_stopping_rounds,
-                        metric_period=100,
-                        task_type="GPU" if torch.cuda.is_available() else "CPU",
-                        devices="0" if torch.cuda.is_available() else None,
-                    )
-                case ModelType.BINNED_BINARY:
-                    catboost = CatBoostClassifierWrapper(
-                        iterations=iterations,
-                        learning_rate=self._learning_rate,
-                        depth=self._depth,
-                        l2_leaf_reg=self._l2_leaf_reg,
-                        boosting_type=self._boosting_type,
-                        early_stopping_rounds=self._early_stopping_rounds,
-                        metric_period=100,
-                        task_type="GPU" if torch.cuda.is_available() else "CPU",
-                        devices="0" if torch.cuda.is_available() else None,
-                    )
-                case ModelType.MULTI_CLASSIFICATION:
-                    catboost = CatBoostClassifierWrapper(
-                        iterations=iterations,
-                        learning_rate=self._learning_rate,
-                        depth=self._depth,
-                        l2_leaf_reg=self._l2_leaf_reg,
-                        boosting_type=self._boosting_type,
-                        early_stopping_rounds=self._early_stopping_rounds,
-                        metric_period=100,
-                        task_type="GPU" if torch.cuda.is_available() else "CPU",
-                        devices="0" if torch.cuda.is_available() else None,
-                    )
+            catboost = self._create_catboost()
             self._catboost = catboost
         if catboost is None:
             raise ValueError("catboost is null")
         return catboost
+
+    def _create_catboost(self) -> CatBoost:
+        best_iteration = self._best_iteration
+        iterations = best_iteration if best_iteration is not None else self._iterations
+        print(
+            f"Creating catboost model with depth {self._depth}, boosting type {self._boosting_type}, best iteration {best_iteration}",
+        )
+        match self._model_type:
+            case ModelType.BINARY:
+                return CatBoostClassifierWrapper(
+                    iterations=iterations,
+                    learning_rate=self._learning_rate,
+                    depth=self._depth,
+                    l2_leaf_reg=self._l2_leaf_reg,
+                    boosting_type=self._boosting_type,
+                    early_stopping_rounds=self._early_stopping_rounds,
+                    metric_period=100,
+                    task_type="GPU" if torch.cuda.is_available() else "CPU",
+                    devices="0" if torch.cuda.is_available() else None,
+                )
+            case ModelType.REGRESSION:
+                return CatBoostRegressorWrapper(
+                    iterations=iterations,
+                    learning_rate=self._learning_rate,
+                    depth=self._depth,
+                    l2_leaf_reg=self._l2_leaf_reg,
+                    boosting_type=self._boosting_type,
+                    early_stopping_rounds=self._early_stopping_rounds,
+                    metric_period=100,
+                    task_type="GPU" if torch.cuda.is_available() else "CPU",
+                    devices="0" if torch.cuda.is_available() else None,
+                )
+            case ModelType.BINNED_BINARY:
+                return CatBoostClassifierWrapper(
+                    iterations=iterations,
+                    learning_rate=self._learning_rate,
+                    depth=self._depth,
+                    l2_leaf_reg=self._l2_leaf_reg,
+                    boosting_type=self._boosting_type,
+                    early_stopping_rounds=self._early_stopping_rounds,
+                    metric_period=100,
+                    task_type="GPU" if torch.cuda.is_available() else "CPU",
+                    devices="0" if torch.cuda.is_available() else None,
+                )
+            case ModelType.MULTI_CLASSIFICATION:
+                return CatBoostClassifierWrapper(
+                    iterations=iterations,
+                    learning_rate=self._learning_rate,
+                    depth=self._depth,
+                    l2_leaf_reg=self._l2_leaf_reg,
+                    boosting_type=self._boosting_type,
+                    early_stopping_rounds=self._early_stopping_rounds,
+                    metric_period=100,
+                    task_type="GPU" if torch.cuda.is_available() else "CPU",
+                    devices="0" if torch.cuda.is_available() else None,
+                )
+            case _:
+                raise ValueError(f"Unrecognised model type: {self._model_type}")
