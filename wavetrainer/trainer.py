@@ -281,13 +281,14 @@ class Trainer(Fit):
                     x_test = selector.transform(x_test)
                     print(f"Selection took {time.time() - start_selector}")
                     start_train = time.time()
-                    x_pred = model.fit_transform(
+                    model.fit(
                         x_train,
                         y=y_train,
                         w=w,
                         eval_x=x_test if not no_evaluation else None,
                         eval_y=y_test if not no_evaluation else None,
                     )
+                    y_pred = model.transform(x_test)
                     print(f"Training took {time.time() - start_train}")
 
                     # Calibrate
@@ -295,13 +296,12 @@ class Trainer(Fit):
                     calibrator = CalibratorRouter(model)
                     calibrator.set_options(trial, x)
                     calibrator.fit(
-                        x_pred if calibrator.predictions_as_x(y_train) else x_train,
-                        y=y_train,
+                        y_pred if calibrator.predictions_as_x(y_test) else x_test,
+                        y=y_test,
                     )
                     print(f"Calibrating took {time.time() - start_calibrate}")
 
                     # Output
-                    y_pred = model.transform(x_test)
                     cal_pred = calibrator.transform(
                         y_pred if calibrator.predictions_as_x(y_test) else x_test
                     )
@@ -441,6 +441,8 @@ class Trainer(Fit):
                         if self._max_train_timeout is None
                         else self._max_train_timeout.total_seconds(),
                     )
+                else:
+                    break
 
                 _fit(study.best_trial, test_df, test_series, True, test_idx, True)
                 last_processed_dt = test_idx

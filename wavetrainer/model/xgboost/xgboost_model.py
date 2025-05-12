@@ -107,7 +107,11 @@ class XGBoostModel(Model):
     @property
     def feature_importances(self) -> dict[str, float]:
         bst = self._provide_xgboost()
-        return bst.get_booster().get_score(importance_type="weight")  # type: ignore
+        try:
+            return bst.get_booster().get_score(importance_type="weight")  # type: ignore
+        except XGBoostError as exc:
+            print(str(exc))
+            return {}
 
     def provide_estimator(self):
         return self._provide_xgboost()
