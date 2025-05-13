@@ -403,6 +403,8 @@ class Trainer(Fit):
                 enumerate(dt_index[dt_index >= start_test_index])
             ):
                 test_dt = test_idx.to_pydatetime()
+                test_df = df.iloc[: train_len + count + test_len]
+                test_series = y_series.iloc[: train_len + count + test_len]
                 found = False
                 for trial in study.trials:
                     dt_idx = datetime.datetime.fromisoformat(
@@ -413,6 +415,7 @@ class Trainer(Fit):
                         break
                 if found:
                     last_processed_dt = test_dt
+                    _fit(study.best_trial, test_df, test_series, True, test_idx, True)
                     continue
                 if (
                     last_processed_dt is not None
@@ -420,8 +423,6 @@ class Trainer(Fit):
                 ):
                     continue
 
-                test_df = df.iloc[: train_len + count + test_len]
-                test_series = y_series.iloc[: train_len + count + test_len]
                 if len(test_df) <= 3:
                     continue
 
