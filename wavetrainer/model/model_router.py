@@ -66,6 +66,18 @@ class ModelRouter(Model):
             raise ValueError("model is null")
         return model.create_estimator()
 
+    def reset(self):
+        model = self._model
+        if model is None:
+            raise ValueError("model is null")
+        model.reset()
+
+    def convert_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        model = self._model
+        if model is None:
+            raise ValueError("model is null")
+        return model.convert_df(df)
+
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:

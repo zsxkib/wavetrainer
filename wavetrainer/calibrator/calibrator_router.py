@@ -37,6 +37,9 @@ class CalibratorRouter(Calibrator):
         return "router"
 
     def predictions_as_x(self, y: pd.Series | pd.DataFrame | None = None) -> bool:
+        calibrator = self._calibrator
+        if calibrator is not None:
+            return calibrator.predictions_as_x(None)
         if y is None:
             raise ValueError("y is null")
         if determine_model_type(y) == ModelType.REGRESSION:

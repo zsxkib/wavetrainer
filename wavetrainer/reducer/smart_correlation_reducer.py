@@ -33,7 +33,7 @@ class SmartCorrelationReducer(BaseSelectorReducer):
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:
         self._correlation_selector.threshold = trial.suggest_float(
-            _SMART_CORRELATION_REDUCER_THRESHOLD, 0.1, 0.9
+            _SMART_CORRELATION_REDUCER_THRESHOLD, 0.7, 0.99
         )
 
     def fit(
@@ -48,3 +48,8 @@ class SmartCorrelationReducer(BaseSelectorReducer):
         if len(self._correlation_selector.variables) <= 1:
             return self
         return super().fit(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        if len(find_non_categorical_numeric_columns(df)) <= 1:
+            return df
+        return super().transform(df)

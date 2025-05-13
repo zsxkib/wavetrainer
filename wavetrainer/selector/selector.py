@@ -57,7 +57,8 @@ class Selector(Params, Fit):
             return self
         if not isinstance(y, pd.Series):
             raise ValueError("y is not a series.")
-        if len(df.columns) <= 1:
+        total_columns = len(df.columns)
+        if total_columns <= 1:
             return self
         print(
             f"Performing feature selection with {self._steps} steps and a total ratio of {self._feature_ratio}"
@@ -81,6 +82,9 @@ class Selector(Params, Fit):
             if not current_features:
                 current_features = [list(feature_importances.keys())[0]]
             current_features = current_features[:required_features]
+            print(
+                f"Current Features:\n{pd.Series(data=list(feature_importances.values()), index=list(feature_importances.keys()))}\n"
+            )
 
         n_features = len(current_features)
         for i in range(self._steps):
@@ -90,16 +94,18 @@ class Selector(Params, Fit):
             ratio_diff = 1.0 - self._feature_ratio
             ratio_step = ratio_diff / float(self._steps)
             current_ratio = 1.0 - (ratio_step * i)
-            n_features = max(1, int(len(df.columns) * current_ratio))
+            n_features = max(1, int(total_columns * current_ratio))
             if n_features >= len(current_features):
                 continue
 
+            self._model.reset()
             self._model.fit(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)
             set_current_features(n_features)
             print(f"Reduced features to {len(current_features)}")
             df = df[current_features]
             if eval_x is not None:
                 eval_x = eval_x[current_features]
+        print(f"Final feature count: {len(current_features)}")
 
         self._selector = current_features
 

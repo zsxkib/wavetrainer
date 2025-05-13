@@ -212,7 +212,7 @@ class Trainer(Fit):
                 folder = os.path.join(
                     self._folder, str(y_series.name), split_idx.isoformat()
                 )
-                new_folder = os.path.exists(folder)
+                new_folder = not os.path.exists(folder)
                 os.makedirs(folder, exist_ok=True)
                 trial_file = os.path.join(folder, _TRIAL_FILENAME)
                 if os.path.exists(trial_file):
@@ -517,7 +517,9 @@ class Trainer(Fit):
                 x_pred = reducer.transform(group[feature_columns])
                 x_pred = selector.transform(x_pred)
                 y_pred = model.transform(x_pred)
-                y_pred = calibrator.transform(y_pred)
+                y_pred = calibrator.transform(
+                    y_pred if calibrator.predictions_as_x(None) else x_pred
+                )
                 for new_column in y_pred.columns.values:
                     group["_".join([column, new_column])] = y_pred[new_column]
                 return group

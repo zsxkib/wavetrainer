@@ -37,7 +37,7 @@ class CorrelationReducer(BaseSelectorReducer):
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:
         self._correlation_selector.threshold = trial.suggest_float(
-            _CORRELATION_REDUCER_THRESHOLD, 0.1, 0.9
+            _CORRELATION_REDUCER_THRESHOLD, 0.7, 0.99
         )
 
     def fit(

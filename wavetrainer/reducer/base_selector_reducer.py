@@ -7,7 +7,6 @@ import joblib  # type: ignore
 import optuna
 import pandas as pd
 from feature_engine.selection.base_selector import BaseSelector
-from sklearn.utils.validation import check_is_fitted  # type: ignore
 
 from .reducer import Reducer
 
@@ -59,7 +58,5 @@ class BaseSelectorReducer(Reducer):
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         if len(df.columns) <= 1:
-            return df
-        if not check_is_fitted(self._base_selector):
             return df
         return self._base_selector.transform(df)

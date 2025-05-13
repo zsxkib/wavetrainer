@@ -7,6 +7,7 @@ from typing import Self
 
 import optuna
 import pandas as pd
+import pytest_is_running
 import torch
 from xgboost import XGBClassifier, XGBRegressor
 from xgboost.callback import TrainingCallback
@@ -119,6 +120,13 @@ class XGBoostModel(Model):
     def create_estimator(self):
         return self._create_xgboost()
 
+    def reset(self):
+        self._xgboost = None
+        self._best_iteration = None
+
+    def convert_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        return _convert_categoricals(df)
+
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:
@@ -130,7 +138,9 @@ class XGBoostModel(Model):
         self._subsample = trial.suggest_float(_SUBSAMPLE_KEY, 0.2, 1.0)
         self._colsample_bytree = trial.suggest_float(_COLSAMPLE_BYTREE_KEY, 0.2, 1.0)
         if self._booster in ["gbtree", "dart"]:
-            self._max_depth = trial.suggest_int(_MAX_DEPTH_KEY, 3, 9)
+            self._max_depth = trial.suggest_int(
+                _MAX_DEPTH_KEY, 3, 4 if pytest_is_running.is_running() else 9
+            )
             self._min_child_weight = trial.suggest_int(
                 _MIN_CHILD_WEIGHT_KEY, 2, 10, log=True
             )
@@ -148,7 +158,9 @@ class XGBoostModel(Model):
             )
             self._rate_drop = trial.suggest_float(_RATE_DROP_KEY, 1e-8, 1.0, log=True)
             self._skip_drop = trial.suggest_float(_SKIP_DROP_KEY, 1e-8, 1.0, log=True)
-        self._num_boost_rounds = trial.suggest_int(_NUM_BOOST_ROUNDS_KEY, 100, 10000)
+        self._num_boost_rounds = trial.suggest_int(
+            _NUM_BOOST_ROUNDS_KEY, 100, 110 if pytest_is_running.is_running() else 10000
+        )
         self._early_stopping_rounds = trial.suggest_int(
             _EARLY_STOPPING_ROUNDS_KEY, 50, 500
         )
@@ -279,7 +291,8 @@ class XGBoostModel(Model):
             )
         param = {
             "objective": "binary:logistic",
-            "tree_method": "gpu_hist" if torch.cuda.is_available() else "exact",
+            "tree_method": "hist" if torch.cuda.is_available() else "exact",
+            "device": "cuda" if torch.cuda.is_available() else "cpu",
             # defines booster, gblinear for linear functions.
             "booster": self._booster,
             # L2 regularization weight.

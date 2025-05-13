@@ -46,3 +46,11 @@ class Model(Params, Fit):
     def create_estimator(self) -> Any:
         """Creates a new estimator."""
         raise NotImplementedError("creates_estimator not implemented in parent class.")
+
+    def reset(self) -> None:
+        """Resets a model."""
+        raise NotImplementedError("reset not implemented in parent class.")
+
+    def convert_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Converts a dataframe for use with a model."""
+        raise NotImplementedError("convert_df not implemented in parent class.")

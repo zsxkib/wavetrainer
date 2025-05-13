@@ -1,5 +1,6 @@
 """A reducer that combines all the other reducers."""
 
+# pylint: disable=line-too-long
 import json
 import logging
 import os
@@ -107,8 +108,8 @@ class CombinedReducer(Reducer):
             removed_columns = before_columns.difference(after_columns)
             if removed_columns:
                 removed_columns_dict[reducer.name()] = list(removed_columns)
-            logging.info(
-                "%s reducer took %f", reducer.name(), time.time() - start_reducer
+            print(
+                f"{reducer.name()} reducer took {time.time() - start_reducer} and removed {len(removed_columns)} features",
             )
         if self._folder is not None:
             with open(

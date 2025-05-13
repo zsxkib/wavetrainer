@@ -56,6 +56,12 @@ class TabPFNModel(Model):
     def create_estimator(self):
         return self._create_tabpfn()
 
+    def reset(self):
+        pass
+
+    def convert_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        return df
+
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:

@@ -3,6 +3,7 @@
 from typing import Any
 
 import numpy as np
+import pandas as pd
 from catboost import Pool  # type: ignore
 
 ORIGINAL_X_ARG_KEY = "original_x"
@@ -12,12 +13,17 @@ CAT_FEATURES_ARG_KEY = "cat_features"
 
 def handle_fit_kwargs(*args, **kwargs) -> tuple[tuple[Any, ...], dict[str, Any]]:
     """Handles keyword args coming into a catboost fit method."""
+    args_list = list(args)
+    fit_x = args_list[0]
+
+    cat_features = kwargs.get(CAT_FEATURES_ARG_KEY)
+    if cat_features is None and isinstance(fit_x, pd.DataFrame):
+        cat_features = fit_x.select_dtypes(include="category").columns.tolist()
+    kwargs[CAT_FEATURES_ARG_KEY] = cat_features
+
     if ORIGINAL_X_ARG_KEY in kwargs:
         df = kwargs[ORIGINAL_X_ARG_KEY]
         eval_x, eval_y = kwargs[EVAL_SET_ARG_KEY]
-        cat_features = kwargs[CAT_FEATURES_ARG_KEY]
-        args_list = list(args)
-        fit_x = args_list[0]
         fix_x_cp = fit_x.copy()
 
         # Stupid code to ensure eval is feature equivalent to train data
@@ -32,9 +38,6 @@ def handle_fit_kwargs(*args, **kwargs) -> tuple[tuple[Any, ...], dict[str, Any]]
                     included_columns.append(col)
                     break
         # We also need to update cat_features or catboost will yell at us
-        cat_features = list(
-            set(list(kwargs.get(CAT_FEATURES_ARG_KEY, []))) & set(included_columns)
-        )
         args_list[0] = df[included_columns]
         args = tuple(args_list)
 
@@ -45,7 +48,7 @@ def handle_fit_kwargs(*args, **kwargs) -> tuple[tuple[Any, ...], dict[str, Any]]
                 label=eval_y,
                 cat_features=cat_features,
             )
-        kwargs[CAT_FEATURES_ARG_KEY] = cat_features
 
         del kwargs[ORIGINAL_X_ARG_KEY]
+
     return args, kwargs

@@ -2,12 +2,12 @@
 
 # pylint: disable=line-too-long
 import json
-import logging
 import os
 from typing import Self
 
 import optuna
 import pandas as pd
+import pytest_is_running
 import torch
 from catboost import CatBoost, Pool  # type: ignore
 
@@ -83,12 +83,21 @@ class CatboostModel(Model):
     def create_estimator(self):
         return self._create_catboost()
 
+    def reset(self):
+        self._catboost = None
+        self._best_iteration = None
+
+    def convert_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        return df
+
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:
         self._iterations = trial.suggest_int(_ITERATIONS_KEY, 100, 10000)
         self._learning_rate = trial.suggest_float(_LEARNING_RATE_KEY, 0.001, 0.3)
-        self._depth = trial.suggest_int(_DEPTH_KEY, 1, 6)
+        self._depth = trial.suggest_int(
+            _DEPTH_KEY, 1, 2 if pytest_is_running.is_running() else 6
+        )
         self._l2_leaf_reg = trial.suggest_float(_L2_LEAF_REG_KEY, 3.0, 50.0)
         self._boosting_type = trial.suggest_categorical(
             _BOOSTING_TYPE_KEY, ["Ordered", "Plain"]
@@ -170,8 +179,6 @@ class CatboostModel(Model):
             metric_period=100,
             eval_set=eval_pool,
         )
-        importances = catboost.get_feature_importance(prettified=True)
-        logging.info("Importances:\n%s", importances)
         self._best_iteration = catboost.get_best_iteration()
         return self
 

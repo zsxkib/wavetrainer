@@ -21,7 +21,7 @@ class MAPIECalibrator(Calibrator):
 
     def __init__(self, model: Model):
         super().__init__(model)
-        self._mapie = MapieRegressor(model.create_estimator(), method="plus")
+        self._mapie = MapieRegressor(model.create_estimator(), method="plus", cv=5)
 
     @classmethod
     def name(cls) -> str:
@@ -54,19 +54,22 @@ class MAPIECalibrator(Calibrator):
             raise ValueError("mapie is null")
         if y is None:
             raise ValueError("y is null")
-        if len(df) <= 5:
-            return self
-        mapie.fit(df.to_numpy(), y.to_numpy())
+        mapie.fit(self._model.convert_df(df), y)
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         alpha = []
         for potential_alpha in [0.05, 0.32]:
-            if len(df) > int(1.0 / potential_alpha) + 1:
+            if (
+                len(df) > int(1.0 / potential_alpha) + 1
+                and len(df) > int(1.0 / (1.0 - potential_alpha)) + 1
+            ):
                 alpha.append(potential_alpha)
         ret_df = pd.DataFrame(index=df.index)
         if alpha:
-            _, y_pis = self._mapie.predict(df, alpha=alpha)
+            _, y_pis = self._mapie.predict(
+                self._model.convert_df(df), alpha=alpha, allow_infinite_bounds=True
+            )
             for i in range(y_pis.shape[1]):
                 if i >= len(alpha):
                     continue
