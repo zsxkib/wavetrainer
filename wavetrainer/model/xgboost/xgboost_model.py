@@ -109,7 +109,9 @@ class XGBoostModel(Model):
     def feature_importances(self) -> dict[str, float]:
         bst = self._provide_xgboost()
         try:
-            return bst.get_booster().get_score(importance_type="weight")  # type: ignore
+            score_dict = bst.get_booster().get_score(importance_type="weight")  # type: ignore
+            total = sum(score_dict.values())  # type: ignore
+            return {k: v / total for k, v in score_dict.items()}  # type: ignore
         except XGBoostError as exc:
             print(str(exc))
             return {}

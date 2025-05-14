@@ -81,11 +81,11 @@ class ModelRouter(Model):
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:
-        model = _MODELS[
-            trial.suggest_categorical(
-                "model", [k for k, v in _MODELS.items() if v.supports_x(df)]
-            )
-        ]()
+        model_name = trial.suggest_categorical(
+            "model", [k for k, v in _MODELS.items() if v.supports_x(df)]
+        )
+        print(f"Using {model_name} model")
+        model = _MODELS[model_name]()
         model.set_options(trial, df)
         self._model = model
 

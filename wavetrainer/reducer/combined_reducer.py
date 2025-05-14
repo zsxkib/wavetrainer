@@ -14,6 +14,7 @@ from .constant_reducer import ConstantReducer
 from .correlation_reducer import CorrelationReducer
 from .duplicate_reducer import DuplicateReducer
 from .nonnumeric_reducer import NonNumericReducer
+from .pca_reducer import PCAReducer
 from .reducer import Reducer
 from .select_by_single_feature_performance_reducer import \
     SelectBySingleFeaturePerformanceReducer
@@ -29,12 +30,14 @@ class CombinedReducer(Reducer):
     """A reducer that combines a series of reducers."""
 
     # pylint: disable=too-many-positional-arguments,too-many-arguments
+    _folder: str | None
 
-    def __init__(self):
+    def __init__(self, embedding_cols: list[list[str]] | None):
         super().__init__()
         self._reducers = [
             UnseenReducer(),
             NonNumericReducer(),
+            PCAReducer(embedding_cols),
             ConstantReducer(),
             DuplicateReducer(),
             CorrelationReducer(),
@@ -42,6 +45,7 @@ class CombinedReducer(Reducer):
             # SelectBySingleFeaturePerformanceReducer(),
         ]
         self._folder = None
+        self._embedding_cols = embedding_cols
 
     @classmethod
     def name(cls) -> str:
@@ -74,6 +78,8 @@ class CombinedReducer(Reducer):
                     self._reducers.append(SmartCorrelationReducer())
                 elif reducer_name == SelectBySingleFeaturePerformanceReducer.name():
                     self._reducers.append(SelectBySingleFeaturePerformanceReducer())
+                elif reducer_name == PCAReducer.name():
+                    self._reducers.append(PCAReducer(self._embedding_cols))
         for reducer in self._reducers:
             reducer.load(folder)
         self._folder = folder

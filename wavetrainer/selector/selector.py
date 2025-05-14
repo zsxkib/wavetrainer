@@ -83,18 +83,18 @@ class Selector(Params, Fit):
                 current_features = [list(feature_importances.keys())[0]]
             current_features = current_features[:required_features]
             print(
-                f"Current Features:\n{pd.Series(data=list(feature_importances.values()), index=list(feature_importances.keys()))}\n"
+                f"Current Features:\n{pd.Series(data=[feature_importances[x] for x in current_features], index=current_features)}\n"
             )
 
         n_features = len(current_features)
         for i in range(self._steps):
-            print(
-                f"Recursive Feature Elimination Step {i}, current features: {len(current_features)}"
-            )
             ratio_diff = 1.0 - self._feature_ratio
             ratio_step = ratio_diff / float(self._steps)
             current_ratio = 1.0 - (ratio_step * i)
             n_features = max(1, int(total_columns * current_ratio))
+            print(
+                f"Recursive Feature Elimination Step {i}, current features: {len(current_features)} required features: {n_features}"
+            )
             if n_features >= len(current_features):
                 continue
 
