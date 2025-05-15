@@ -75,7 +75,8 @@ class CatboostModel(Model):
             raise ValueError("importances is null")
         feature_ids = importances["Feature Id"].to_list()  # type: ignore
         importances = importances["Importances"].to_list()  # type: ignore
-        return {feature_ids[x]: importances[x] for x in range(len(feature_ids))}
+        total = sum(importances)
+        return {feature_ids[x]: importances[x] / total for x in range(len(feature_ids))}
 
     def provide_estimator(self):
         return self._provide_catboost()

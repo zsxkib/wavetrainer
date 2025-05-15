@@ -309,8 +309,6 @@ class XGBoostModel(Model):
             if best_iteration is not None
             else self._num_boost_rounds,
             "base_score": 0.5,
-            "verbosity": 0,
-            "verbose": True,
             "callbacks": callbacks,
             "eval_metric": ["logloss", "error"],
             "use_label_encoder": False,
