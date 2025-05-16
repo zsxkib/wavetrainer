@@ -141,7 +141,7 @@ class XGBoostModel(Model):
         self._colsample_bytree = trial.suggest_float(_COLSAMPLE_BYTREE_KEY, 0.2, 1.0)
         if self._booster in ["gbtree", "dart"]:
             self._max_depth = trial.suggest_int(
-                _MAX_DEPTH_KEY, 3, 4 if pytest_is_running.is_running() else 9
+                _MAX_DEPTH_KEY, 3, 4 if pytest_is_running.is_running() else 8
             )
             self._min_child_weight = trial.suggest_int(
                 _MIN_CHILD_WEIGHT_KEY, 2, 10, log=True
