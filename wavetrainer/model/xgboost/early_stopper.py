@@ -13,4 +13,5 @@ class XGBoostEarlyStoppingCallback(EarlyStopping):
     ) -> bool:
         if len(evals_log.keys()) < 1:
             return False
-        return super().after_iteration(model, epoch, evals_log)
+        filtered_evals_log = {"validation": evals_log["validation_0"]}
+        return super().after_iteration(model, epoch, filtered_evals_log)
