@@ -79,7 +79,10 @@ class CatboostModel(Model):
         feature_ids = importances["Feature Id"].to_list()  # type: ignore
         importances = importances["Importances"].to_list()  # type: ignore
         total = sum(importances)
-        return {feature_ids[x]: importances[x] / total if total != 0.0 else 0.0 for x in range(len(feature_ids))}
+        return {
+            feature_ids[x]: importances[x] / total if total != 0.0 else 0.0
+            for x in range(len(feature_ids))
+        }
 
     def provide_estimator(self):
         return self._provide_catboost()
