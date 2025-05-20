@@ -18,6 +18,7 @@ from .catboost_regressor_wrap import CatBoostRegressorWrapper
 
 _MODEL_FILENAME = "model.cbm"
 _MODEL_PARAMS_FILENAME = "model_params.json"
+_MODEL_CATEGORICAL_FEATURES_FILENAME = "catboost_categorical_features.json"
 _ITERATIONS_KEY = "iterations"
 _LEARNING_RATE_KEY = "learning_rate"
 _DEPTH_KEY = "depth"
@@ -42,6 +43,7 @@ class CatboostModel(Model):
     _model_type: None | ModelType
     _early_stopping_rounds: None | int
     _best_iteration: None | int
+    _categorical_features: dict[str, bool]
 
     @classmethod
     def name(cls) -> str:
@@ -62,6 +64,7 @@ class CatboostModel(Model):
         self._model_type = None
         self._early_stopping_rounds = None
         self._best_iteration = None
+        self._categorical_features = {}
 
     @property
     def supports_importances(self) -> bool:
@@ -76,7 +79,7 @@ class CatboostModel(Model):
         feature_ids = importances["Feature Id"].to_list()  # type: ignore
         importances = importances["Importances"].to_list()  # type: ignore
         total = sum(importances)
-        return {feature_ids[x]: importances[x] / total for x in range(len(feature_ids))}
+        return {feature_ids[x]: importances[x] / total if total != 0.0 else 0.0 for x in range(len(feature_ids))}
 
     def provide_estimator(self):
         return self._provide_catboost()
@@ -119,6 +122,10 @@ class CatboostModel(Model):
             self._model_type = ModelType(params[_MODEL_TYPE_KEY])
             self._early_stopping_rounds = params[_EARLY_STOPPING_ROUNDS]
             self._best_iteration = params.get(_BEST_ITERATION_KEY)
+        with open(
+            os.path.join(folder, _MODEL_CATEGORICAL_FEATURES_FILENAME), encoding="utf8"
+        ) as handle:
+            self._categorical_features = json.load(handle)
         catboost = self._provide_catboost()
         catboost.load_model(os.path.join(folder, _MODEL_FILENAME))
 
@@ -139,6 +146,12 @@ class CatboostModel(Model):
                 },
                 handle,
             )
+        with open(
+            os.path.join(folder, _MODEL_CATEGORICAL_FEATURES_FILENAME),
+            "w",
+            encoding="utf8",
+        ) as handle:
+            json.dump(self._categorical_features, handle)
         catboost = self._provide_catboost()
         catboost.save_model(os.path.join(folder, _MODEL_FILENAME))
         trial.set_user_attr(_BEST_ITERATION_KEY, self._best_iteration)
@@ -155,6 +168,9 @@ class CatboostModel(Model):
             raise ValueError("y is null.")
         self._model_type = determine_model_type(y)
         catboost = self._provide_catboost()
+        self._categorical_features = {
+            x: True for x in df.select_dtypes(include="category").columns.tolist()
+        }
 
         train_pool = Pool(
             df,
@@ -184,6 +200,10 @@ class CatboostModel(Model):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        for categorical_feature_column in self._categorical_features.keys():
+            df[categorical_feature_column] = df[categorical_feature_column].astype(
+                "category"
+            )
         pred_pool = Pool(
             df,
             cat_features=df.select_dtypes(include="category").columns.tolist(),
