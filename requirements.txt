@@ -13,3 +13,4 @@ torch>=2.6.0
 tabpfn>=2.0.6
 pytest-is-running>=1.5.1
 xgboost>=3.0.0
+jax>=0.6.1

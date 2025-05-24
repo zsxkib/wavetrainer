@@ -27,6 +27,11 @@ _BOOSTING_TYPE_KEY = "boosting_type"
 _MODEL_TYPE_KEY = "model_type"
 _EARLY_STOPPING_ROUNDS = "early_stopping_rounds"
 _BEST_ITERATION_KEY = "best_iteration"
+_LOSS_FUNCTION_KEY = "loss_function"
+_DEFAULT_LOSS_FUNCTION = "default"
+_FOCALLOSS_LOSS_FUNCTION = "focalloss"
+_GAMMA_KEY = "focalloss_gamma"
+_ALPHA_KEY = "focalloss_alpha"
 
 
 class CatboostModel(Model):
@@ -44,6 +49,9 @@ class CatboostModel(Model):
     _early_stopping_rounds: None | int
     _best_iteration: None | int
     _categorical_features: dict[str, bool]
+    _loss_function: None | str
+    _gamma: None | float
+    _alpha: None | float
 
     @classmethod
     def name(cls) -> str:
@@ -65,6 +73,9 @@ class CatboostModel(Model):
         self._early_stopping_rounds = None
         self._best_iteration = None
         self._categorical_features = {}
+        self._loss_function = None
+        self._gamma = None
+        self._alpha = None
 
     @property
     def supports_importances(self) -> bool:
@@ -111,6 +122,13 @@ class CatboostModel(Model):
         )
         self._early_stopping_rounds = trial.suggest_int(_EARLY_STOPPING_ROUNDS, 10, 500)
         self._best_iteration = trial.user_attrs.get(_BEST_ITERATION_KEY)
+        loss_function = trial.suggest_categorical(
+            _LOSS_FUNCTION_KEY, [_DEFAULT_LOSS_FUNCTION, _FOCALLOSS_LOSS_FUNCTION]
+        )
+        self._loss_function = loss_function
+        if loss_function == _FOCALLOSS_LOSS_FUNCTION:
+            self._gamma = trial.suggest_float(_GAMMA_KEY, 0.5, 5.0)
+            self._alpha = trial.suggest_float(_ALPHA_KEY, 0.05, 0.95)
 
     def load(self, folder: str) -> None:
         with open(
@@ -125,6 +143,9 @@ class CatboostModel(Model):
             self._model_type = ModelType(params[_MODEL_TYPE_KEY])
             self._early_stopping_rounds = params[_EARLY_STOPPING_ROUNDS]
             self._best_iteration = params.get(_BEST_ITERATION_KEY)
+            self._loss_function = params.get(_LOSS_FUNCTION_KEY, _DEFAULT_LOSS_FUNCTION)
+            self._gamma = params.get(_GAMMA_KEY)
+            self._alpha = params.get(_ALPHA_KEY)
         with open(
             os.path.join(folder, _MODEL_CATEGORICAL_FEATURES_FILENAME), encoding="utf8"
         ) as handle:
@@ -146,6 +167,9 @@ class CatboostModel(Model):
                     _MODEL_TYPE_KEY: str(self._model_type),
                     _EARLY_STOPPING_ROUNDS: self._early_stopping_rounds,
                     _BEST_ITERATION_KEY: self._best_iteration,
+                    _LOSS_FUNCTION_KEY: self._loss_function,
+                    _GAMMA_KEY: self._gamma,
+                    _ALPHA_KEY: self._alpha,
                 },
                 handle,
             )
@@ -240,6 +264,14 @@ class CatboostModel(Model):
         print(
             f"Creating catboost model with depth {self._depth}, boosting type {self._boosting_type}, best iteration {best_iteration}",
         )
+        loss_function = None
+        if (
+            self._loss_function == _FOCALLOSS_LOSS_FUNCTION
+            and self._alpha is not None
+            and self._gamma is not None
+            and self._model_type != ModelType.REGRESSION
+        ):
+            loss_function = f"Focal:focal_alpha={self._alpha};focal_gamma={self._gamma}"
         match self._model_type:
             case ModelType.BINARY:
                 return CatBoostClassifierWrapper(
@@ -252,6 +284,7 @@ class CatboostModel(Model):
                     metric_period=100,
                     task_type="GPU" if torch.cuda.is_available() else "CPU",
                     devices="0" if torch.cuda.is_available() else None,
+                    loss_function=loss_function,
                 )
             case ModelType.REGRESSION:
                 return CatBoostRegressorWrapper(
@@ -276,6 +309,7 @@ class CatboostModel(Model):
                     metric_period=100,
                     task_type="GPU" if torch.cuda.is_available() else "CPU",
                     devices="0" if torch.cuda.is_available() else None,
+                    loss_function=loss_function,
                 )
             case ModelType.MULTI_CLASSIFICATION:
                 return CatBoostClassifierWrapper(
@@ -288,6 +322,7 @@ class CatboostModel(Model):
                     metric_period=100,
                     task_type="GPU" if torch.cuda.is_available() else "CPU",
                     devices="0" if torch.cuda.is_available() else None,
+                    loss_function=loss_function,
                 )
             case _:
                 raise ValueError(f"Unrecognised model type: {self._model_type}")

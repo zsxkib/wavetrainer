@@ -5,10 +5,13 @@ import json
 import os
 from typing import Self
 
+import jax.numpy as jnp
+import numpy as np
 import optuna
 import pandas as pd
 import pytest_is_running
 import torch
+from jax import grad, hessian, vmap
 from xgboost import XGBClassifier, XGBRegressor
 from xgboost.callback import TrainingCallback
 from xgboost.core import XGBoostError
@@ -39,6 +42,11 @@ _RATE_DROP_KEY = "rate_drop"
 _SKIP_DROP_KEY = "skip_drop"
 _NUM_BOOST_ROUNDS_KEY = "num_boost_rounds"
 _EARLY_STOPPING_ROUNDS_KEY = "early_stopping_rounds"
+_LOSS_FUNCTION_KEY = "xgboost_loss_function"
+_DEFAULT_LOSS_FUNCTION = "default"
+_FOCALLOSS_LOSS_FUNCTION = "focalloss"
+_FOCALLOSS_GAMMA_KEY = "focalloss_gamma"
+_FOCALLOSS_ALPHA_KEY = "focalloss_alpha"
 
 
 def _convert_categoricals(input_df: pd.DataFrame) -> pd.DataFrame:
@@ -70,6 +78,9 @@ class XGBoostModel(Model):
     _num_boost_rounds: int | None
     _early_stopping_rounds: int | None
     _best_iteration: int | None
+    _focalloss_alpha: float | None
+    _focalloss_gamma: float | None
+    _loss_function: str | None
 
     @classmethod
     def name(cls) -> str:
@@ -100,6 +111,9 @@ class XGBoostModel(Model):
         self._num_boost_rounds = None
         self._early_stopping_rounds = None
         self._best_iteration = None
+        self._loss_function = None
+        self._focalloss_gamma = None
+        self._focalloss_alpha = None
 
     @property
     def supports_importances(self) -> bool:
@@ -167,6 +181,15 @@ class XGBoostModel(Model):
             _EARLY_STOPPING_ROUNDS_KEY, 50, 500
         )
         self._best_iteration = trial.user_attrs.get(_BEST_ITERATION_KEY)
+        loss_function = trial.suggest_categorical(
+            _LOSS_FUNCTION_KEY, [_DEFAULT_LOSS_FUNCTION, _FOCALLOSS_LOSS_FUNCTION]
+        )
+        self._loss_function = loss_function
+        if loss_function == _FOCALLOSS_LOSS_FUNCTION:
+            self._focalloss_gamma = trial.suggest_float(_FOCALLOSS_GAMMA_KEY, 0.5, 5.0)
+            self._focalloss_alpha = trial.suggest_float(
+                _FOCALLOSS_ALPHA_KEY, 0.05, 0.95
+            )
 
     def load(self, folder: str) -> None:
         with open(
@@ -191,6 +214,9 @@ class XGBoostModel(Model):
             self._num_boost_rounds = params[_NUM_BOOST_ROUNDS_KEY]
             self._early_stopping_rounds = params[_EARLY_STOPPING_ROUNDS_KEY]
             self._best_iteration = params.get(_BEST_ITERATION_KEY)
+            self._loss_function = params.get(_LOSS_FUNCTION_KEY, _DEFAULT_LOSS_FUNCTION)
+            self._focalloss_gamma = params.get(_FOCALLOSS_GAMMA_KEY)
+            self._focalloss_alpha = params.get(_FOCALLOSS_ALPHA_KEY)
         bst = self._provide_xgboost()
         bst.load_model(os.path.join(folder, _MODEL_FILENAME))
 
@@ -220,6 +246,9 @@ class XGBoostModel(Model):
                     _SKIP_DROP_KEY: self._skip_drop,
                     _NUM_BOOST_ROUNDS_KEY: self._num_boost_rounds,
                     _EARLY_STOPPING_ROUNDS_KEY: self._early_stopping_rounds,
+                    _LOSS_FUNCTION_KEY: self._loss_function,
+                    _FOCALLOSS_GAMMA_KEY: self._gamma,
+                    _FOCALLOSS_ALPHA_KEY: self._alpha,
                 },
                 handle,
             )
@@ -328,6 +357,46 @@ class XGBoostModel(Model):
             param["normalize_type"] = self._normalize_type
             param["rate_drop"] = self._rate_drop
             param["skip_drop"] = self._skip_drop
+        if (
+            self._loss_function == _FOCALLOSS_LOSS_FUNCTION
+            and self._focalloss_alpha is not None
+            and self._focalloss_gamma is not None
+        ):
+
+            def focal_loss(alpha=0.25, gamma=2.0):
+                def fl(x, t):
+                    p = 1 / (1 + jnp.exp(-x))
+                    pt = t * p + (1 - t) * (1 - p)
+                    alpha_t = alpha * t + (1 - alpha) * (1 - t)
+                    return (
+                        -alpha_t * (1 - pt) ** gamma * jnp.log(jnp.clip(pt, 1e-8, 1.0))
+                    )
+
+                fl_grad = grad(fl)
+                fl_hess = hessian(fl)
+                grad_batch = vmap(fl_grad)
+                hess_batch = vmap(fl_hess)
+
+                def custom_loss(y_pred, y_true, sample_weight=None):
+                    y_true = jnp.array(y_true)
+                    y_pred = jnp.array(y_pred)
+
+                    grad_vals = grad_batch(y_pred, y_true)
+                    hess_vals = hess_batch(y_pred, y_true)
+
+                    if sample_weight is not None:
+                        sample_weight = jnp.array(sample_weight)
+                        grad_vals *= sample_weight
+                        hess_vals *= sample_weight
+
+                    # Convert to NumPy arrays for XGBoost compatibility
+                    return np.array(grad_vals), np.array(hess_vals)
+
+                return custom_loss
+
+            param["objective"] = focal_loss(
+                alpha=self._focalloss_alpha, gamma=self._focalloss_gamma
+            )
         print(
             f"Creating xgboost model with max_depth {self._max_depth}, best iteration {best_iteration}, booster: {self._booster}",
         )
