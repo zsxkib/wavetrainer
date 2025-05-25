@@ -154,7 +154,7 @@ class Trainer(Fit):
         self._dt_column = dt_column
         self._max_train_timeout = max_train_timeout
         self._cutoff_dt = cutoff_dt
-        self._embedding_cols = embedding_cols
+        self.embedding_cols = embedding_cols
 
     def _provide_study(self, column: str) -> optuna.Study:
         storage_name = f"sqlite:///{self._folder}/{column}/{_STUDYDB_FILENAME}"
@@ -249,7 +249,7 @@ class Trainer(Fit):
 
                     # Perform common reductions
                     start_reducer = time.time()
-                    reducer = CombinedReducer(self._embedding_cols)
+                    reducer = CombinedReducer(self.embedding_cols)
                     reducer.set_options(trial, x)
                     x_train = reducer.fit_transform(x_train, y=y_train)
                     x_test = reducer.transform(x_test)
@@ -514,7 +514,7 @@ class Trainer(Fit):
                 date_str = dates[-1].isoformat()
                 folder = os.path.join(column_path, date_str)
 
-                reducer = CombinedReducer(self._embedding_cols)
+                reducer = CombinedReducer(self.embedding_cols)
                 reducer.load(folder)
 
                 model = ModelRouter()
