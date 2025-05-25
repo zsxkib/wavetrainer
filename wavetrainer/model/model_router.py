@@ -1,19 +1,23 @@
 """A model class that routes to other models."""
 
+import functools
 import json
 import os
 from typing import Self
 
 import optuna
 import pandas as pd
+from sklearn.metrics import accuracy_score  # type: ignore
 
+from ..model_type import ModelType, determine_model_type
 from .catboost.catboost_model import CatboostModel
-from .model import Model
+from .model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
 from .tabpfn.tabpfn_model import TabPFNModel
 from .xgboost.xgboost_model import XGBoostModel
 
 _MODEL_ROUTER_FILE = "model_router.json"
 _MODEL_KEY = "model"
+_FALSE_POSITIVE_REDUCTION_STEPS_KEY = "false_positive_reduction_steps"
 _MODELS = {
     CatboostModel.name(): CatboostModel,
     TabPFNModel.name(): TabPFNModel,
@@ -27,10 +31,12 @@ class ModelRouter(Model):
     # pylint: disable=too-many-positional-arguments,too-many-arguments
 
     _model: Model | None
+    _false_positive_reduction_steps: int | None
 
     def __init__(self) -> None:
         super().__init__()
         self._model = None
+        self._false_positive_reduction_steps = None
 
     @classmethod
     def name(cls) -> str:
@@ -81,6 +87,9 @@ class ModelRouter(Model):
     def set_options(
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:
+        self._false_positive_reduction_steps = trial.suggest_int(
+            _FALSE_POSITIVE_REDUCTION_STEPS_KEY, 0, 5
+        )
         model_name = trial.suggest_categorical(
             "model", [k for k, v in _MODELS.items() if v.supports_x(df)]
         )
@@ -122,7 +131,48 @@ class ModelRouter(Model):
         model = self._model
         if model is None:
             raise ValueError("model is null")
-        model.fit(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)
+        false_positive_reduction_steps = self._false_positive_reduction_steps
+        if false_positive_reduction_steps is None:
+            false_positive_reduction_steps = 0
+        for i in range(max(false_positive_reduction_steps, 1)):
+            print(f"False Positive Reduction Step: {i + 1}")
+            pred = model.fit_transform(df, y=y, w=w, eval_x=eval_x, eval_y=eval_y)
+            if (
+                w is None
+                or y is None
+                or determine_model_type(y) == ModelType.REGRESSION
+            ):
+                break
+            print(f"Accuracy: {accuracy_score(y, pred[PREDICTION_COLUMN])}")
+            pred["__wavetrain_correct"] = pred[PREDICTION_COLUMN] != y
+            pred["__wavetrain_error_weight"] = pred["__wavetrain_correct"].astype(float)
+            prob_columns = sorted(
+                [
+                    x
+                    for x in pred.columns.values.tolist()
+                    if x.startswith(PROBABILITY_COLUMN_PREFIX)
+                ]
+            )
+            if prob_columns:
+
+                def determine_error_weight(
+                    row: pd.Series, prob_columns: list[str]
+                ) -> float:
+                    nonlocal y
+                    if not row["__wavetrain_correct"]:
+                        return abs(row[prob_columns[1 - int(y.loc[row.name])]])  # type: ignore
+                    return 0.0
+
+                pred["__wavetrain_error_weight"] = pred.apply(
+                    functools.partial(
+                        determine_error_weight,
+                        prob_columns=prob_columns,
+                    ),
+                    axis=1,
+                )
+            w += pred["__wavetrain_error_weight"]
+            w = w.clip(lower=0.0)
+
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:

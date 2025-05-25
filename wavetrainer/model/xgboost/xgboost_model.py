@@ -125,7 +125,10 @@ class XGBoostModel(Model):
         try:
             score_dict = bst.get_booster().get_score(importance_type="weight")  # type: ignore
             total = sum(score_dict.values())  # type: ignore
-            return {k: v / total for k, v in score_dict.items()}  # type: ignore
+            return {
+                k: 0.0 if total == 0.0 else v / total  # type: ignore
+                for k, v in score_dict.items()  # type: ignore
+            }  # type: ignore
         except XGBoostError as exc:
             print(str(exc))
             return {}
