@@ -381,7 +381,7 @@ class Trainer(Fit):
                 )
             while (
                 study.best_trial.value is None or study.best_trial.value == _BAD_OUTPUT
-            ):
+            ) and len(study.trials) < 1000:
                 logging.info("Performing extra train")
                 study.optimize(
                     test_objective,
