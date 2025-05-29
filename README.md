@@ -29,6 +29,7 @@ Python 3.11.6:
 - [pytest-is-running](https://github.com/adamchainz/pytest-is-running)
 - [xgboost](https://xgboost.readthedocs.io/en/release_3.0.0/)
 - [jax](https://github.com/jax-ml/jax)
+- [tabpfn_extensions](https://github.com/PriorLabs/tabpfn-extensions)
 
 ## Raison D'être :thought_balloon:
 
