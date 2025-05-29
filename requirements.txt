@@ -14,3 +14,4 @@ pytest-is-running>=1.5.1
 xgboost>=3.0.0
 jax>=0.6.1
 tabpfn_extensions>=0.0.4
+hyperopt>=0.2.7
