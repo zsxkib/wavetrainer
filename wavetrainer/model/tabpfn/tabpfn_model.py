@@ -103,7 +103,7 @@ class TabPFNModel(Model):
         tabpfn = self._provide_tabpfn()
         try:
             tabpfn.fit(df, y)
-        except ValueError as exc:
+        except (ValueError, RuntimeError) as exc:
             logging.warning(str(exc))
             raise WavetrainException() from exc
         return self
