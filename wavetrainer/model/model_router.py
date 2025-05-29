@@ -170,8 +170,7 @@ class ModelRouter(Model):
                     ),
                     axis=1,
                 )
-            w += pred["__wavetrain_error_weight"]
-            w = w.clip(lower=0.0)
+            w += pred["__wavetrain_error_weight"].fillna(0.0).clip(lower=0.000001)
 
         return self
 
