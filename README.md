@@ -23,7 +23,6 @@ Python 3.11.6:
 - [scipy](https://scipy.org/)
 - [catboost](https://catboost.ai/)
 - [venn-abers](https://github.com/ip200/venn-abers)
-- [mapie](https://mapie.readthedocs.io/en/stable/)
 - [pytz](https://pythonhosted.org/pytz/)
 - [torch](https://pytorch.org/)
 - [tabpfn](https://github.com/PriorLabs/TabPFN)

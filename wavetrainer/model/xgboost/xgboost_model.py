@@ -275,6 +275,8 @@ class XGBoostModel(Model):
         if eval_x is not None and eval_y is not None and self._best_iteration is None:
             eval_x = _convert_categoricals(eval_x)
             evals = [(eval_x, eval_y), (df, y)]
+        if w is not None:
+            w = w.fillna(0.0).clip(lower=0.00001)
         xgboost.fit(  # type: ignore
             df,
             y,
