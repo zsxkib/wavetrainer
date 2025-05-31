@@ -123,7 +123,7 @@ class CatboostModel(Model):
         self._early_stopping_rounds = trial.suggest_int(_EARLY_STOPPING_ROUNDS, 10, 500)
         self._best_iteration = trial.user_attrs.get(_BEST_ITERATION_KEY)
         loss_functions = [_DEFAULT_LOSS_FUNCTION]
-        if torch.cuda.is_available():
+        if not torch.cuda.is_available():
             loss_functions.append(_FOCALLOSS_LOSS_FUNCTION)
         loss_function = trial.suggest_categorical(_LOSS_FUNCTION_KEY, loss_functions)
         self._loss_function = loss_function
