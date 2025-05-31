@@ -63,7 +63,7 @@ class PCAReducer(Reducer):
         if self._embedding_cols is None:
             return self
         for k, v in self._pcas.items():
-            v.fit(df[self._embedding_dict[k]])
+            v.fit(df[self._embedding_dict[k]].dropna())
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -71,7 +71,7 @@ class PCAReducer(Reducer):
             return df
         for k, v in self._pcas.items():
             cols = self._embedding_dict[k]
-            compressed_embedding = v.transform(df[cols])
+            compressed_embedding = v.transform(df[cols].fillna(0.0))
             embedding_len = compressed_embedding.shape[0]
             df[cols[:embedding_len]] = compressed_embedding
             df = df.drop(columns=cols[embedding_len:])
