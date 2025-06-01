@@ -64,6 +64,7 @@ class Trainer(Fit):
         max_train_timeout: datetime.timedelta | None = None,
         cutoff_dt: datetime.datetime | None = None,
         embedding_cols: list[list[str]] | None = None,
+        allowed_models: set[str] | None = None,
     ):
         tqdm.tqdm.pandas()
 
@@ -155,6 +156,7 @@ class Trainer(Fit):
         self._max_train_timeout = max_train_timeout
         self._cutoff_dt = cutoff_dt
         self.embedding_cols = embedding_cols
+        self._allowed_models = allowed_models
 
     def _provide_study(self, column: str) -> optuna.Study:
         storage_name = f"sqlite:///{self._folder}/{column}/{_STUDYDB_FILENAME}"
@@ -265,7 +267,7 @@ class Trainer(Fit):
                     print(f"Row weights took {time.time() - start_row_weights}")
 
                     # Create model
-                    model = ModelRouter()
+                    model = ModelRouter(self._allowed_models)
                     model.set_options(trial, x)
 
                     # Train
@@ -517,7 +519,7 @@ class Trainer(Fit):
                 reducer = CombinedReducer(self.embedding_cols)
                 reducer.load(folder)
 
-                model = ModelRouter()
+                model = ModelRouter(None)
                 model.load(folder)
 
                 selector = Selector(model)
@@ -570,7 +572,7 @@ class Trainer(Fit):
                 if not os.path.isdir(date_path):
                     continue
                 try:
-                    model = ModelRouter()
+                    model = ModelRouter(None)
                     model.load(date_path)
                     feature_importances[date_str] = model.feature_importances
                 except FileNotFoundError as exc:

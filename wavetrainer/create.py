@@ -16,6 +16,7 @@ def create(
     max_train_timeout: datetime.timedelta | None = None,
     cutoff_dt: datetime.datetime | None = None,
     embedding_cols: list[list[str]] | None = None,
+    allowed_models: set[str] | None = None,
 ) -> Trainer:
     """Create a trainer."""
     return Trainer(
@@ -27,4 +28,5 @@ def create(
         max_train_timeout=max_train_timeout,
         cutoff_dt=cutoff_dt,
         embedding_cols=embedding_cols,
+        allowed_models=allowed_models,
     )

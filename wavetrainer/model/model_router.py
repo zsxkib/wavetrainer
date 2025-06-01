@@ -33,10 +33,13 @@ class ModelRouter(Model):
     _model: Model | None
     _false_positive_reduction_steps: int | None
 
-    def __init__(self) -> None:
+    def __init__(self, allowed_models: set[str] | None) -> None:
         super().__init__()
         self._model = None
         self._false_positive_reduction_steps = None
+        self._allowed_models = (
+            allowed_models if allowed_models is not None else set(_MODELS.keys())
+        )
 
     @classmethod
     def name(cls) -> str:
@@ -91,7 +94,12 @@ class ModelRouter(Model):
             _FALSE_POSITIVE_REDUCTION_STEPS_KEY, 0, 5
         )
         model_name = trial.suggest_categorical(
-            "model", [k for k, v in _MODELS.items() if v.supports_x(df)]
+            "model",
+            [
+                k
+                for k, v in _MODELS.items()
+                if v.supports_x(df) and k in self._allowed_models
+            ],
         )
         print(f"Using {model_name} model")
         model = _MODELS[model_name]()
