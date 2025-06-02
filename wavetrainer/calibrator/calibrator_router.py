@@ -5,10 +5,12 @@ import logging
 import os
 from typing import Self
 
+import numpy as np
 import optuna
 import pandas as pd
+from pycaleva import CalibrationEvaluator  # type: ignore
 
-from ..model.model import Model
+from ..model.model import PROBABILITY_COLUMN_PREFIX, Model
 from ..model_type import ModelType, determine_model_type
 from .calibrator import Calibrator
 from .vennabers_calibrator import VennabersCalibrator
@@ -26,10 +28,12 @@ class CalibratorRouter(Calibrator):
     # pylint: disable=too-many-positional-arguments,too-many-arguments
 
     _calibrator: Calibrator | None
+    _ce: CalibrationEvaluator | None
 
     def __init__(self, model: Model):
         super().__init__(model)
         self._calibrator = None
+        self._ce = None
 
     @classmethod
     def name(cls) -> str:
@@ -75,6 +79,14 @@ class CalibratorRouter(Calibrator):
                 },
                 handle,
             )
+        ce = self._ce
+        if ce is not None:
+            try:
+                ce.calibration_report(
+                    os.path.join(folder, "calibration.pdf"), "binary-classifier"
+                )
+            except ValueError as exc:
+                logging.warning(str(exc))
 
     def fit(
         self,
@@ -94,6 +106,25 @@ class CalibratorRouter(Calibrator):
             calibrator = VennabersCalibrator(self._model)
         calibrator.fit(df, y=y, w=w)
         self._calibrator = calibrator
+
+        pred_prob = calibrator.transform(df)
+        pred_prob = pred_prob.drop(
+            columns=[
+                x
+                for x in pred_prob.columns.values.tolist()
+                if not x.startswith(PROBABILITY_COLUMN_PREFIX)
+            ],
+            errors="ignore",
+        )
+        ce = CalibrationEvaluator(
+            y.to_numpy(),
+            np.max(pred_prob.to_numpy(), axis=1),
+            outsample=True,
+            n_groups="auto",
+        )
+        print(f"Hosmer Lemeshow: {ce.hosmerlemeshow()}")
+        self._ce = ce
+
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:

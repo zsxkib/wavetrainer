@@ -31,6 +31,7 @@ Python 3.11.6:
 - [jax](https://github.com/jax-ml/jax)
 - [tabpfn_extensions](https://github.com/PriorLabs/tabpfn-extensions)
 - [hyperopt](https://github.com/hyperopt/hyperopt)
+- [pycaleva](https://github.com/MartinWeigl/pycaleva)
 
 ## Raison D'être :thought_balloon:
 
