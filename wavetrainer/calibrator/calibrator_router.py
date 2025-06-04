@@ -5,7 +5,6 @@ import logging
 import os
 from typing import Self
 
-import numpy as np
 import optuna
 import pandas as pd
 from pycaleva import CalibrationEvaluator  # type: ignore
@@ -118,7 +117,7 @@ class CalibratorRouter(Calibrator):
         )
         ce = CalibrationEvaluator(
             y.to_numpy(),
-            np.max(pred_prob.to_numpy(), axis=1),
+            pred_prob[PROBABILITY_COLUMN_PREFIX + str(0)].to_numpy(),
             outsample=True,
             n_groups="auto",
         )
