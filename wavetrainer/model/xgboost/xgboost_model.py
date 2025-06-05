@@ -53,7 +53,7 @@ def _convert_categoricals(input_df: pd.DataFrame) -> pd.DataFrame:
     output_df = input_df.copy()
     for col in input_df.select_dtypes(include=["category"]).columns:
         output_df[col] = output_df[col].cat.codes
-    return output_df
+    return output_df.replace([np.inf, -np.inf], np.nan)
 
 
 class XGBoostModel(Model):

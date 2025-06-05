@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score  # type: ignore
 
 from ..model_type import ModelType, determine_model_type
 from .catboost.catboost_model import CatboostModel
+from .lightgbm.lightgbm_model import LightGBMModel
 from .model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX, Model
 from .tabpfn.tabpfn_model import TabPFNModel
 from .xgboost.xgboost_model import XGBoostModel
@@ -22,6 +23,7 @@ _MODELS = {
     CatboostModel.name(): CatboostModel,
     TabPFNModel.name(): TabPFNModel,
     XGBoostModel.name(): XGBoostModel,
+    LightGBMModel.name(): LightGBMModel,
 }
 
 
