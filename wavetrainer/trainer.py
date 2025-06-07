@@ -1,5 +1,6 @@
 """The trainer class."""
 
+# pylint: disable=line-too-long
 import datetime
 import functools
 import json
@@ -12,12 +13,14 @@ from typing import Self
 import optuna
 import pandas as pd
 import tqdm
-from sklearn.metrics import f1_score, r2_score  # type: ignore
+from sklearn.metrics import f1_score  # type: ignore
+from sklearn.metrics import (accuracy_score, brier_score_loss, log_loss,
+                             precision_score, r2_score, recall_score)
 
 from .calibrator.calibrator_router import CalibratorRouter
 from .exceptions import WavetrainException
 from .fit import Fit
-from .model.model import PREDICTION_COLUMN
+from .model.model import PREDICTION_COLUMN, PROBABILITY_COLUMN_PREFIX
 from .model.model_router import ModelRouter
 from .model_type import ModelType, determine_model_type
 from .reducer.combined_reducer import CombinedReducer
@@ -46,6 +49,11 @@ def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
         if bins[i] <= timestamp < bins[i + 1]:
             return i
     return len(bins) - 2  # Assign to last bin if at the end
+
+
+def _best_trial(study: optuna.Study) -> optuna.trial.FrozenTrial:
+    best_brier = min(study.best_trials, key=lambda t: t.values[1])
+    return best_brier
 
 
 class Trainer(Fit):
@@ -170,7 +178,10 @@ class Trainer(Fit):
             storage=storage_name,
             load_if_exists=True,
             sampler=restored_sampler,
-            direction=optuna.study.StudyDirection.MAXIMIZE,
+            directions=[
+                optuna.study.StudyDirection.MAXIMIZE,
+                optuna.study.StudyDirection.MINIMIZE,
+            ],
         )
 
     def fit(
@@ -210,7 +221,7 @@ class Trainer(Fit):
                 save: bool,
                 split_idx: datetime.datetime,
                 no_evaluation: bool,
-            ) -> float:
+            ) -> tuple[float, float]:
                 print(f"Beginning trial for: {split_idx.isoformat()}")
                 trial.set_user_attr(_IDX_USR_ATTR_KEY, split_idx.isoformat())
                 folder = os.path.join(
@@ -246,7 +257,7 @@ class Trainer(Fit):
                         if new_folder:
                             os.removedirs(folder)
                         logging.warning("Y train only contains 1 unique datapoint.")
-                        return _BAD_OUTPUT
+                        return _BAD_OUTPUT, -_BAD_OUTPUT
                     print(f"Windowing took {time.time() - start_windower}")
 
                     # Perform common reductions
@@ -311,10 +322,29 @@ class Trainer(Fit):
                     )
                     cal_pred[PREDICTION_COLUMN] = y_pred[PREDICTION_COLUMN]
                     output = 0.0
+                    loss = 0.0
                     if determine_model_type(y_series) == ModelType.REGRESSION:
                         output = float(r2_score(y_test, y_pred[[PREDICTION_COLUMN]]))
+                        print(f"R2: {output}")
                     else:
                         output = float(f1_score(y_test, y_pred[[PREDICTION_COLUMN]]))
+                        print(f"F1: {output}")
+                        prob_col = PROBABILITY_COLUMN_PREFIX + str(1)
+                        if prob_col in y_pred.columns.values.tolist():
+                            loss = float(brier_score_loss(y_test, y_pred[[prob_col]]))
+                            print(f"Brier: {loss}")
+                            print(
+                                f"Log Loss: {float(log_loss(y_test.astype(float), y_pred[[prob_col]]))}"
+                            )
+                        print(
+                            f"Accuracy: {float(accuracy_score(y_test, y_pred[[PREDICTION_COLUMN]]))}"
+                        )
+                        print(
+                            f"Precision: {float(precision_score(y_test, y_pred[[PREDICTION_COLUMN]]))}"
+                        )
+                        print(
+                            f"Recall: {float(recall_score(y_test, y_pred[[PREDICTION_COLUMN]]))}"
+                        )
 
                     if save:
                         windower.save(folder, trial)
@@ -332,13 +362,13 @@ class Trainer(Fit):
                                 handle,
                             )
 
-                    return output
+                    return output, loss
                 except WavetrainException as exc:
                     print(str(exc))
                     logging.warning(str(exc))
                     if new_folder:
                         os.removedirs(folder)
-                    return _BAD_OUTPUT
+                    return _BAD_OUTPUT, -_BAD_OUTPUT
 
             start_validation_index = (
                 dt_index.to_list()[-int(len(dt_index) * self._validation_size) - 1]
@@ -359,7 +389,7 @@ class Trainer(Fit):
                 ].to_list()[0]
             )
 
-            def test_objective(trial: optuna.Trial) -> float:
+            def test_objective(trial: optuna.Trial) -> tuple[float, float]:
                 return _fit(
                     trial,
                     test_df,
@@ -382,7 +412,8 @@ class Trainer(Fit):
                     else self._max_train_timeout.total_seconds(),
                 )
             while (
-                study.best_trial.value is None or study.best_trial.value == _BAD_OUTPUT
+                _best_trial(study).values is None
+                or _best_trial(study).values == (_BAD_OUTPUT, -_BAD_OUTPUT)
             ) and len(study.trials) < 1000:
                 logging.info("Performing extra train")
                 study.optimize(
@@ -420,7 +451,7 @@ class Trainer(Fit):
                 if found:
                     last_processed_dt = test_dt
                     _fit(
-                        study.best_trial,
+                        _best_trial(study),
                         test_df.copy(),
                         test_series,
                         True,
@@ -441,7 +472,7 @@ class Trainer(Fit):
 
                     def validate_objctive(
                         trial: optuna.Trial, idx: datetime.datetime, series: pd.Series
-                    ) -> float:
+                    ) -> tuple[float, float]:
                         return _fit(trial, test_df.copy(), series, False, idx, False)
 
                     study.optimize(
@@ -457,9 +488,35 @@ class Trainer(Fit):
                     break
 
                 _fit(
-                    study.best_trial, test_df.copy(), test_series, True, test_idx, True
+                    _best_trial(study),
+                    test_df.copy(),
+                    test_series,
+                    True,
+                    test_idx,
+                    True,
                 )
                 last_processed_dt = test_idx
+
+            target_names = ["F1", "Brier"]
+            fig = optuna.visualization.plot_pareto_front(
+                study, target_names=target_names
+            )
+            fig.write_image(
+                os.path.join(column_dir, "pareto_frontier.png"),
+                format="png",
+                width=800,
+                height=600,
+            )
+            for target_name in target_names:
+                fig = optuna.visualization.plot_param_importances(
+                    study, target=lambda t: t.values[0], target_name=target_name
+                )
+                fig.write_image(
+                    os.path.join(column_dir, f"{target_name}_frontier.png"),
+                    format="png",
+                    width=800,
+                    height=600,
+                )
 
         if isinstance(y, pd.Series):
             _fit_column(y)

@@ -148,7 +148,7 @@ class LightGBMModel(Model):
 
         eval_set = None
         callbacks = []
-        if eval_x is None or eval_y is None:
+        if eval_x is not None and eval_y is not None:
             eval_set = [(eval_x, eval_y.to_numpy().flatten())]  # type: ignore
             callbacks = [
                 lgb.early_stopping(stopping_rounds=early_stopping_rounds),

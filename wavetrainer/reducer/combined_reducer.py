@@ -2,7 +2,6 @@
 
 # pylint: disable=line-too-long
 import json
-import logging
 import os
 import time
 from typing import Self
@@ -129,6 +128,6 @@ class CombinedReducer(Reducer):
             try:
                 df = reducer.transform(df)
             except ValueError as exc:
-                logging.warning("Failed to reduce %s", reducer.name())
+                print("Failed to reduce %s", reducer.name())
                 raise exc
         return df

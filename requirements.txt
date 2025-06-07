@@ -17,3 +17,4 @@ tabpfn_extensions>=0.0.4
 hyperopt>=0.2.7
 pycaleva>=0.8.2
 lightgbm>=4.6.0
+kaleido>=0.2.1
