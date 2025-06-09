@@ -41,6 +41,7 @@ _TEST_SIZE_KEY = "test_size"
 _VALIDATION_SIZE_KEY = "validation_size"
 _IDX_USR_ATTR_KEY = "idx"
 _DT_COLUMN_KEY = "dt_column"
+_MAX_FALSE_POSITIVE_REDUCTION_STEPS_KEY = "max_false_positive_reduction_steps"
 _BAD_OUTPUT = -1000.0
 
 
@@ -73,6 +74,7 @@ class Trainer(Fit):
         cutoff_dt: datetime.datetime | None = None,
         embedding_cols: list[list[str]] | None = None,
         allowed_models: set[str] | None = None,
+        max_false_positive_reduction_steps: int | None = None,
     ):
         tqdm.tqdm.pandas()
 
@@ -123,6 +125,10 @@ class Trainer(Fit):
                         )
                 if dt_column is None:
                     dt_column = params[_DT_COLUMN_KEY]
+                if max_false_positive_reduction_steps is None:
+                    max_false_positive_reduction_steps = params.get(
+                        _MAX_FALSE_POSITIVE_REDUCTION_STEPS_KEY
+                    )
         else:
             with open(params_file, "w", encoding="utf8") as handle:
                 validation_size_value = None
@@ -153,6 +159,7 @@ class Trainer(Fit):
                         _TEST_SIZE_KEY: test_size_value,
                         _VALIDATION_SIZE_KEY: validation_size_value,
                         _DT_COLUMN_KEY: dt_column,
+                        _MAX_FALSE_POSITIVE_REDUCTION_STEPS_KEY: max_false_positive_reduction_steps,
                     },
                     handle,
                 )
@@ -165,6 +172,7 @@ class Trainer(Fit):
         self._cutoff_dt = cutoff_dt
         self.embedding_cols = embedding_cols
         self._allowed_models = allowed_models
+        self._max_false_positive_reduction_steps = max_false_positive_reduction_steps
 
     def _provide_study(self, column: str) -> optuna.Study:
         storage_name = f"sqlite:///{self._folder}/{column}/{_STUDYDB_FILENAME}"
@@ -278,7 +286,9 @@ class Trainer(Fit):
                     print(f"Row weights took {time.time() - start_row_weights}")
 
                     # Create model
-                    model = ModelRouter(self._allowed_models)
+                    model = ModelRouter(
+                        self._allowed_models, self._max_false_positive_reduction_steps
+                    )
                     model.set_options(trial, x)
 
                     # Train
@@ -576,7 +586,7 @@ class Trainer(Fit):
                 reducer = CombinedReducer(self.embedding_cols)
                 reducer.load(folder)
 
-                model = ModelRouter(None)
+                model = ModelRouter(None, None)
                 model.load(folder)
 
                 selector = Selector(model)
@@ -629,7 +639,7 @@ class Trainer(Fit):
                 if not os.path.isdir(date_path):
                     continue
                 try:
-                    model = ModelRouter(None)
+                    model = ModelRouter(None, None)
                     model.load(date_path)
                     feature_importances[date_str] = model.feature_importances
                 except FileNotFoundError as exc:

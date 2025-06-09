@@ -35,13 +35,18 @@ class ModelRouter(Model):
     _model: Model | None
     _false_positive_reduction_steps: int | None
 
-    def __init__(self, allowed_models: set[str] | None) -> None:
+    def __init__(
+        self,
+        allowed_models: set[str] | None,
+        max_false_positive_reduction_steps: int | None,
+    ) -> None:
         super().__init__()
         self._model = None
         self._false_positive_reduction_steps = None
         self._allowed_models = (
             allowed_models if allowed_models is not None else set(_MODELS.keys())
         )
+        self._max_false_positive_reduction_steps = max_false_positive_reduction_steps
 
     @classmethod
     def name(cls) -> str:
@@ -93,7 +98,11 @@ class ModelRouter(Model):
         self, trial: optuna.Trial | optuna.trial.FrozenTrial, df: pd.DataFrame
     ) -> None:
         self._false_positive_reduction_steps = trial.suggest_int(
-            _FALSE_POSITIVE_REDUCTION_STEPS_KEY, 0, 5
+            _FALSE_POSITIVE_REDUCTION_STEPS_KEY,
+            0,
+            5
+            if self._max_false_positive_reduction_steps is None
+            else self._max_false_positive_reduction_steps,
         )
         model_name = trial.suggest_categorical(
             "model",
