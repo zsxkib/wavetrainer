@@ -17,6 +17,7 @@ def create(
     cutoff_dt: datetime.datetime | None = None,
     embedding_cols: list[list[str]] | None = None,
     allowed_models: set[str] | None = None,
+    max_false_positive_reduction_steps: int | None = None,
 ) -> Trainer:
     """Create a trainer."""
     return Trainer(
@@ -29,4 +30,5 @@ def create(
         cutoff_dt=cutoff_dt,
         embedding_cols=embedding_cols,
         allowed_models=allowed_models,
+        max_false_positive_reduction_steps=max_false_positive_reduction_steps,
     )
