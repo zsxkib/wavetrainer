@@ -1,6 +1,6 @@
 """A reducer that removes correlation features."""
 
-# pylint: disable=too-many-arguments,too-many-positional-arguments,consider-using-enumerate
+# pylint: disable=too-many-arguments,too-many-positional-arguments,consider-using-enumerate,too-many-locals
 import json
 import os
 from typing import Self
@@ -17,51 +17,64 @@ _CORRELATION_REDUCER_FILENAME = "correlation_reducer.json"
 _CORRELATION_REDUCER_THRESHOLD = "correlation_reducer_threshold"
 
 
-def _get_correlated_features_to_drop(
-    df: pd.DataFrame, threshold: float = 0.85, random_seed: int = 42
+def _get_correlated_features_to_drop_chunked(
+    df: pd.DataFrame,
+    threshold: float = 0.85,
+    chunk_size: int = 10000,
+    random_seed: int = 42,
 ) -> list[str]:
     """
-    Identify highly correlated features to drop, keeping one per group.
-    NaNs are replaced with a single fixed junk value to allow correlation computation.
-    Columns are processed in sorted order to ensure deterministic output.
-
-    Args:
-        df (pd.DataFrame): Input DataFrame.
-        threshold (float): Correlation threshold above which features are considered redundant.
-        random_seed (int): Seed used to generate the fixed junk value.
-
-    Returns:
-        List[str]: List of column names to drop.
+    Chunked correlation feature reducer to control memory usage.
+    Applies correlation pruning within chunks, then across surviving features.
     """
     np.random.seed(random_seed)
-
-    # Select and sort numeric columns
     sorted_cols = sorted(find_non_categorical_numeric_columns(df))
     df_numeric = df[sorted_cols].copy()
-
-    # Generate and apply a fixed junk value for NaNs
     junk_value = np.random.uniform(-1e9, 1e9)
-    df_numeric = df_numeric.fillna(junk_value)
+    df_numeric = df_numeric.fillna(junk_value).astype(np.float32)
 
-    if df_numeric.shape[1] < 2:
-        return []
+    # First pass: intra-chunk correlation pruning
+    survivors = []
+    to_drop_total = set()
+    for i in range(0, len(sorted_cols), chunk_size):
+        chunk_cols = sorted_cols[i : i + chunk_size]
+        chunk_df = df_numeric[chunk_cols]
+        chunk_corr = np.corrcoef(chunk_df.values, rowvar=False)
+        abs_corr = np.abs(chunk_corr)
 
-    # Compute absolute correlation matrix
-    corr_matrix = np.corrcoef(df_numeric.values, rowvar=False)
-    abs_corr = np.abs(corr_matrix)
+        to_drop = set()
+        for j in range(len(chunk_cols)):
+            if chunk_cols[j] in to_drop:
+                continue
+            for k in range(j + 1, len(chunk_cols)):
+                if chunk_cols[k] in to_drop:
+                    continue
+                if abs_corr[j, k] > threshold:
+                    to_drop.add(chunk_cols[k])
 
-    # Greedy feature drop based on sorted order
-    to_drop = set()
-    for i in range(len(sorted_cols)):
-        if sorted_cols[i] in to_drop:
+        survivors.extend([col for col in chunk_cols if col not in to_drop])
+        to_drop_total.update(to_drop)
+
+    # Second pass: global correlation among survivors
+    if len(survivors) < 2:
+        return sorted(to_drop_total)
+
+    survivors_df = df_numeric[survivors]
+    final_corr = np.corrcoef(survivors_df.values, rowvar=False)
+    abs_corr = np.abs(final_corr)
+
+    final_drop = set()
+    for i in range(len(survivors)):
+        if survivors[i] in final_drop:
             continue
-        for j in range(i + 1, len(sorted_cols)):
-            if sorted_cols[j] in to_drop:
+        for j in range(i + 1, len(survivors)):
+            if survivors[j] in final_drop:
                 continue
             if abs_corr[i, j] > threshold:
-                to_drop.add(sorted_cols[j])
+                final_drop.add(survivors[j])
 
-    return sorted(to_drop)
+    to_drop_total.update(final_drop)
+    return sorted(to_drop_total)
 
 
 class CorrelationReducer(Reducer):
@@ -102,7 +115,9 @@ class CorrelationReducer(Reducer):
         eval_x: pd.DataFrame | None = None,
         eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
-        drop_features = _get_correlated_features_to_drop(df, threshold=self._threshold)
+        drop_features = _get_correlated_features_to_drop_chunked(
+            df, threshold=self._threshold
+        )
         self._correlation_drop_features = {x: True for x in drop_features}
         return self
 
