@@ -8,6 +8,7 @@ from typing import Self
 import numpy as np
 import optuna
 import pandas as pd
+from memory_profiler import profile  # type: ignore
 
 from .non_categorical_numeric_columns import \
     find_non_categorical_numeric_columns
@@ -17,6 +18,7 @@ _CORRELATION_REDUCER_FILENAME = "correlation_reducer.json"
 _CORRELATION_REDUCER_THRESHOLD = "correlation_reducer_threshold"
 
 
+@profile
 def _get_correlated_features_to_drop_chunked(
     df: pd.DataFrame,
     threshold: float = 0.85,

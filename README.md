@@ -34,6 +34,7 @@ Python 3.11.6:
 - [pycaleva](https://github.com/MartinWeigl/pycaleva)
 - [lightgbm](https://github.com/microsoft/LightGBM)
 - [kaleido](https://github.com/plotly/Kaleido)
+- [memory-profiler](https://github.com/pythonprofilers/memory_profiler)
 
 ## Raison D'être :thought_balloon:
 
