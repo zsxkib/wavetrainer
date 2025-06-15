@@ -18,6 +18,7 @@ def create(
     embedding_cols: list[list[str]] | None = None,
     allowed_models: set[str] | None = None,
     max_false_positive_reduction_steps: int | None = None,
+    correlation_chunk_size: int | None = None,
 ) -> Trainer:
     """Create a trainer."""
     return Trainer(
@@ -31,4 +32,5 @@ def create(
         embedding_cols=embedding_cols,
         allowed_models=allowed_models,
         max_false_positive_reduction_steps=max_false_positive_reduction_steps,
+        correlation_chunk_size=correlation_chunk_size,
     )

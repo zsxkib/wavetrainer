@@ -82,9 +82,10 @@ class CorrelationReducer(Reducer):
 
     _correlation_drop_features: dict[str, bool]
 
-    def __init__(self) -> None:
+    def __init__(self, correlation_chunk_size: int) -> None:
         self._threshold = 0.0
         self._correlation_drop_features = {}
+        self._correlation_chunk_size = correlation_chunk_size
 
     @classmethod
     def name(cls) -> str:
@@ -116,7 +117,9 @@ class CorrelationReducer(Reducer):
         eval_y: pd.Series | pd.DataFrame | None = None,
     ) -> Self:
         drop_features = _get_correlated_features_to_drop_chunked(
-            df, threshold=self._threshold
+            df.copy(),
+            threshold=self._threshold,
+            chunk_size=self._correlation_chunk_size,
         )
         self._correlation_drop_features = {x: True for x in drop_features}
         return self

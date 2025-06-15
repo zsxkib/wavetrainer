@@ -31,20 +31,25 @@ class CombinedReducer(Reducer):
     # pylint: disable=too-many-positional-arguments,too-many-arguments
     _folder: str | None
 
-    def __init__(self, embedding_cols: list[list[str]] | None):
+    def __init__(
+        self, embedding_cols: list[list[str]] | None, correlation_chunk_size: int | None
+    ):
         super().__init__()
+        if correlation_chunk_size is None:
+            correlation_chunk_size = 500
         self._reducers = [
             UnseenReducer(),
             NonNumericReducer(),
             PCAReducer(embedding_cols),
             ConstantReducer(),
             DuplicateReducer(),
-            CorrelationReducer(),
+            CorrelationReducer(correlation_chunk_size=correlation_chunk_size),
             SmartCorrelationReducer(),
             # SelectBySingleFeaturePerformanceReducer(),
         ]
         self._folder = None
         self._embedding_cols = embedding_cols
+        self._correlation_chunk_size = correlation_chunk_size
 
     @classmethod
     def name(cls) -> str:
@@ -68,7 +73,9 @@ class CombinedReducer(Reducer):
                 elif reducer_name == DuplicateReducer.name():
                     self._reducers.append(DuplicateReducer())
                 elif reducer_name == CorrelationReducer.name():
-                    self._reducers.append(CorrelationReducer())
+                    self._reducers.append(
+                        CorrelationReducer(self._correlation_chunk_size)
+                    )
                 elif reducer_name == NonNumericReducer.name():
                     self._reducers.append(NonNumericReducer())
                 elif reducer_name == UnseenReducer.name():

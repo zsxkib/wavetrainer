@@ -42,6 +42,7 @@ _VALIDATION_SIZE_KEY = "validation_size"
 _IDX_USR_ATTR_KEY = "idx"
 _DT_COLUMN_KEY = "dt_column"
 _MAX_FALSE_POSITIVE_REDUCTION_STEPS_KEY = "max_false_positive_reduction_steps"
+_CORRELATION_CHUNK_SIZE_KEY = "correlation_chunk_size"
 _BAD_OUTPUT = -1000.0
 
 
@@ -75,6 +76,7 @@ class Trainer(Fit):
         embedding_cols: list[list[str]] | None = None,
         allowed_models: set[str] | None = None,
         max_false_positive_reduction_steps: int | None = None,
+        correlation_chunk_size: int | None = None,
     ):
         tqdm.tqdm.pandas()
 
@@ -129,6 +131,8 @@ class Trainer(Fit):
                     max_false_positive_reduction_steps = params.get(
                         _MAX_FALSE_POSITIVE_REDUCTION_STEPS_KEY
                     )
+                if correlation_chunk_size is None:
+                    correlation_chunk_size = params.get(_CORRELATION_CHUNK_SIZE_KEY)
         else:
             with open(params_file, "w", encoding="utf8") as handle:
                 validation_size_value = None
@@ -160,6 +164,7 @@ class Trainer(Fit):
                         _VALIDATION_SIZE_KEY: validation_size_value,
                         _DT_COLUMN_KEY: dt_column,
                         _MAX_FALSE_POSITIVE_REDUCTION_STEPS_KEY: max_false_positive_reduction_steps,
+                        _CORRELATION_CHUNK_SIZE_KEY: correlation_chunk_size,
                     },
                     handle,
                 )
@@ -173,6 +178,7 @@ class Trainer(Fit):
         self.embedding_cols = embedding_cols
         self._allowed_models = allowed_models
         self._max_false_positive_reduction_steps = max_false_positive_reduction_steps
+        self._correlation_chunk_size = correlation_chunk_size
 
     def _provide_study(self, column: str) -> optuna.Study:
         storage_name = f"sqlite:///{self._folder}/{column}/{_STUDYDB_FILENAME}"
@@ -246,7 +252,8 @@ class Trainer(Fit):
                                 "Found trial %d previously executed, skipping...",
                                 trial.number,
                             )
-                            return trial_info["output"]
+                            return tuple(trial_info["output"])
+                        print("Retraining for different trial number.")
 
                 train_dt_index = dt_index[: len(x)]
                 x_train = x[train_dt_index < split_idx]  # type: ignore
@@ -270,7 +277,9 @@ class Trainer(Fit):
 
                     # Perform common reductions
                     start_reducer = time.time()
-                    reducer = CombinedReducer(self.embedding_cols)
+                    reducer = CombinedReducer(
+                        self.embedding_cols, self._correlation_chunk_size
+                    )
                     reducer.set_options(trial, x)
                     x_train = reducer.fit_transform(x_train, y=y_train)
                     x_test = reducer.transform(x_test)
@@ -367,7 +376,7 @@ class Trainer(Fit):
                             json.dump(
                                 {
                                     "number": trial.number,
-                                    "output": output,
+                                    "output": [output, loss],
                                 },
                                 handle,
                             )
@@ -583,7 +592,9 @@ class Trainer(Fit):
                 date_str = dates[-1].isoformat()
                 folder = os.path.join(column_path, date_str)
 
-                reducer = CombinedReducer(self.embedding_cols)
+                reducer = CombinedReducer(
+                    self.embedding_cols, self._correlation_chunk_size
+                )
                 reducer.load(folder)
 
                 model = ModelRouter(None, None)
