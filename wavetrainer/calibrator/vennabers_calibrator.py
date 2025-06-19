@@ -5,6 +5,7 @@ import os
 from typing import Self
 
 import joblib  # type: ignore
+import numpy as np
 import optuna
 import pandas as pd
 from venn_abers import VennAbers  # type: ignore
@@ -55,18 +56,26 @@ class VennabersCalibrator(Calibrator):
             raise ValueError("vennabers is null")
         if y is None:
             raise ValueError("y is null")
-        prob_columns = [
-            x for x in df.columns.values if x.startswith(PROBABILITY_COLUMN_PREFIX)
-        ]
+        prob_columns = sorted(
+            [x for x in df.columns.values if x.startswith(PROBABILITY_COLUMN_PREFIX)]
+        )
+        probs = df[prob_columns].to_numpy()
         try:
-            vennabers.fit(df[prob_columns].to_numpy(), y.to_numpy())
+            vennabers.fit(probs, y.to_numpy())
         except IndexError:
             logging.error(df)
             raise
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        p_prime, _ = self._vennabers.predict_proba(df.to_numpy())
+        prob_columns = sorted(
+            [x for x in df.columns.values if x.startswith(PROBABILITY_COLUMN_PREFIX)]
+        )
+        probs = df[prob_columns].to_numpy()
+        p_prime, _ = self._vennabers.predict_proba(probs)
+        if np.mean(p_prime[:, 1] > 0.5) > 0.5 and np.mean(probs[:, 0] > 0.5) > 0.5:
+            print("⚠️ Warning: calibration seems inverted — flipping p_prime")
+            p_prime = p_prime[:, ::-1]
         for i in range(p_prime.shape[1]):
             prob = p_prime[:, i]
             df[f"{PROBABILITY_COLUMN_PREFIX}{i}"] = prob
