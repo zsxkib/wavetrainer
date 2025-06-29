@@ -54,8 +54,9 @@ def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
 
 
 def _best_trial(study: optuna.Study) -> optuna.trial.FrozenTrial:
-    best_brier = min(study.best_trials, key=lambda t: t.values[1])
-    return best_brier
+    return study.best_trial
+    # best_brier = min(study.best_trials, key=lambda t: t.values[1])
+    # return best_brier
 
 
 class Trainer(Fit):
@@ -193,7 +194,7 @@ class Trainer(Fit):
             load_if_exists=True,
             sampler=restored_sampler,
             directions=[
-                optuna.study.StudyDirection.MAXIMIZE,
+                # optuna.study.StudyDirection.MAXIMIZE,
                 optuna.study.StudyDirection.MINIMIZE,
             ],
         )
@@ -235,7 +236,8 @@ class Trainer(Fit):
                 save: bool,
                 split_idx: datetime.datetime,
                 no_evaluation: bool,
-            ) -> tuple[float, float]:
+                # ) -> tuple[float, float]:
+            ) -> float:
                 print(f"Beginning trial for: {split_idx.isoformat()}")
                 trial.set_user_attr(_IDX_USR_ATTR_KEY, split_idx.isoformat())
                 folder = os.path.join(
@@ -252,7 +254,8 @@ class Trainer(Fit):
                                 "Found trial %d previously executed, skipping...",
                                 trial.number,
                             )
-                            return tuple(trial_info["output"])
+                            # return tuple(trial_info["output"])
+                            return tuple(trial_info["output"])[0]
                         print("Retraining for different trial number.")
 
                 train_dt_index = dt_index[: len(x)]
@@ -272,7 +275,8 @@ class Trainer(Fit):
                         if new_folder:
                             os.removedirs(folder)
                         logging.warning("Y train only contains 1 unique datapoint.")
-                        return _BAD_OUTPUT, -_BAD_OUTPUT
+                        # return _BAD_OUTPUT, -_BAD_OUTPUT
+                        return -_BAD_OUTPUT
                     print(f"Windowing took {time.time() - start_windower}")
 
                     # Perform common reductions
@@ -381,13 +385,15 @@ class Trainer(Fit):
                                 handle,
                             )
 
-                    return output, loss
+                    # return output, loss
+                    return loss
                 except WavetrainException as exc:
                     print(str(exc))
                     logging.warning(str(exc))
                     if new_folder:
                         os.removedirs(folder)
-                    return _BAD_OUTPUT, -_BAD_OUTPUT
+                    # return _BAD_OUTPUT, -_BAD_OUTPUT
+                    return -_BAD_OUTPUT
 
             start_validation_index = (
                 dt_index.to_list()[-int(len(dt_index) * self._validation_size) - 1]
@@ -408,7 +414,8 @@ class Trainer(Fit):
                 ].to_list()[0]
             )
 
-            def test_objective(trial: optuna.Trial) -> tuple[float, float]:
+            # def test_objective(trial: optuna.Trial) -> tuple[float, float]:
+            def test_objective(trial: optuna.Trial) -> float:
                 return _fit(
                     trial,
                     test_df,
@@ -490,8 +497,11 @@ class Trainer(Fit):
                 if test_idx < start_validation_index:
 
                     def validate_objctive(
-                        trial: optuna.Trial, idx: datetime.datetime, series: pd.Series
-                    ) -> tuple[float, float]:
+                        trial: optuna.Trial,
+                        idx: datetime.datetime,
+                        series: pd.Series,
+                        # ) -> tuple[float, float]:
+                    ) -> float:
                         return _fit(trial, test_df.copy(), series, False, idx, False)
 
                     study.optimize(
@@ -517,15 +527,15 @@ class Trainer(Fit):
                 last_processed_dt = test_idx
 
             target_names = ["F1", "Brier"]
-            fig = optuna.visualization.plot_pareto_front(
-                study, target_names=target_names
-            )
-            fig.write_image(
-                os.path.join(column_dir, "pareto_frontier.png"),
-                format="png",
-                width=800,
-                height=600,
-            )
+            # fig = optuna.visualization.plot_pareto_front(
+            #    study, target_names=target_names
+            # )
+            # fig.write_image(
+            #    os.path.join(column_dir, "pareto_frontier.png"),
+            #    format="png",
+            #    width=800,
+            #    height=600,
+            # )
             for target_name in target_names:
                 fig = optuna.visualization.plot_param_importances(
                     study, target=lambda t: t.values[0], target_name=target_name
