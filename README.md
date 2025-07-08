@@ -35,6 +35,7 @@ Python 3.11.6:
 - [lightgbm](https://github.com/microsoft/LightGBM)
 - [kaleido](https://github.com/plotly/Kaleido)
 - [memory-profiler](https://github.com/pythonprofilers/memory_profiler)
+- [matplotlib](https://matplotlib.org/)
 
 ## Raison D'être :thought_balloon:
 

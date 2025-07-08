@@ -44,7 +44,7 @@ class CombinedReducer(Reducer):
             # ConstantReducer(),
             # DuplicateReducer(),
             CorrelationReducer(correlation_chunk_size=correlation_chunk_size),
-            SmartCorrelationReducer(),
+            # SmartCorrelationReducer(),
             # SelectBySingleFeaturePerformanceReducer(),
         ]
         self._folder = None

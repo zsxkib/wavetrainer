@@ -114,7 +114,7 @@ class CatboostModel(Model):
         self._iterations = trial.suggest_int(_ITERATIONS_KEY, 100, 10000)
         self._learning_rate = trial.suggest_float(_LEARNING_RATE_KEY, 0.001, 0.3)
         self._depth = trial.suggest_int(
-            _DEPTH_KEY, 1, 2 if pytest_is_running.is_running() else 6
+            _DEPTH_KEY, 1, 2 if pytest_is_running.is_running() else 7
         )
         self._l2_leaf_reg = trial.suggest_float(_L2_LEAF_REG_KEY, 3.0, 50.0)
         self._boosting_type = trial.suggest_categorical(

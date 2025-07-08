@@ -1,13 +1,16 @@
 """A calibrator class that routes to other calibrators."""
 
+import io
 import json
 import logging
 import os
 from typing import Self
 
+import matplotlib.pyplot as plt
 import optuna
 import pandas as pd
 from pycaleva import CalibrationEvaluator  # type: ignore
+from sklearn.calibration import calibration_curve  # type: ignore
 
 from ..model.model import PROBABILITY_COLUMN_PREFIX, Model
 from ..model_type import ModelType, determine_model_type
@@ -27,12 +30,12 @@ class CalibratorRouter(Calibrator):
     # pylint: disable=too-many-positional-arguments,too-many-arguments
 
     _calibrator: Calibrator | None
-    _ce: CalibrationEvaluator | None
+    _calibration_buffer: io.BytesIO | None
 
     def __init__(self, model: Model):
         super().__init__(model)
         self._calibrator = None
-        self._ce = None
+        self._calibration_buffer = None
 
     @classmethod
     def name(cls) -> str:
@@ -78,14 +81,11 @@ class CalibratorRouter(Calibrator):
                 },
                 handle,
             )
-        ce = self._ce
-        if ce is not None:
-            try:
-                ce.calibration_report(
-                    os.path.join(folder, "calibration.pdf"), "binary-classifier"
-                )
-            except ValueError as exc:
-                logging.warning(str(exc))
+        calibration_buffer = self._calibration_buffer
+        if calibration_buffer is not None:
+            with open(os.path.join(folder, "calibration.png"), "wb") as handle:
+                handle.write(calibration_buffer.getvalue())
+            self._calibration_buffer = None
 
     def fit(
         self,
@@ -122,7 +122,26 @@ class CalibratorRouter(Calibrator):
             n_groups="auto",
         )
         print(f"Hosmer Lemeshow: {ce.hosmerlemeshow()}")
-        self._ce = ce
+
+        fraction_of_positives, mean_predicted_value = calibration_curve(
+            y.to_numpy(),
+            pred_prob[PROBABILITY_COLUMN_PREFIX + str(0)].to_numpy(),
+            n_bins=10,
+            strategy="uniform",
+        )
+        plt.figure(figsize=(8, 6))
+        plt.plot(mean_predicted_value, fraction_of_positives, "s-", label="Model")
+        plt.plot([0, 1], [0, 1], "k--", label="Perfectly calibrated")
+        plt.xlabel("Mean predicted probability")
+        plt.ylabel("Fraction of positives")
+        plt.title("Calibration Curve (Reliability Diagram)")
+        plt.legend()
+        self._calibration_buffer = io.BytesIO()
+        plt.savefig(
+            self._calibration_buffer, format="png", dpi=300, bbox_inches="tight"
+        )
+        self._calibration_buffer.seek(0)
+        plt.close()
 
         return self
 

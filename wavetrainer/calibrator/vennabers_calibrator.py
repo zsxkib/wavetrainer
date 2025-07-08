@@ -73,9 +73,6 @@ class VennabersCalibrator(Calibrator):
         )
         probs = df[prob_columns].to_numpy()
         p_prime, _ = self._vennabers.predict_proba(probs)
-        if np.mean(p_prime[:, 1] > 0.5) > 0.5 and np.mean(probs[:, 0] > 0.5) > 0.5:
-            print("⚠️ Warning: calibration seems inverted — flipping p_prime")
-            p_prime = p_prime[:, ::-1]
         for i in range(p_prime.shape[1]):
             prob = p_prime[:, i]
             df[f"{PROBABILITY_COLUMN_PREFIX}{i}"] = prob
