@@ -5,7 +5,6 @@ import os
 from typing import Self
 
 import joblib  # type: ignore
-import numpy as np
 import optuna
 import pandas as pd
 from venn_abers import VennAbers  # type: ignore

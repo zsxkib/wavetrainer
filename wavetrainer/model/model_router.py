@@ -63,12 +63,13 @@ class ModelRouter(Model):
             raise ValueError("model is null")
         return model.supports_importances
 
-    @property
-    def feature_importances(self) -> dict[str, float]:
+    def feature_importances(
+        self, df: pd.DataFrame | None
+    ) -> tuple[dict[str, float], list[dict[str, float]]]:
         model = self._model
         if model is None:
             raise ValueError("model is null")
-        return model.feature_importances
+        return model.feature_importances(df)
 
     def provide_estimator(self):
         model = self._model

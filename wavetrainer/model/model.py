@@ -32,8 +32,9 @@ class Model(Params, Fit):
             "supports_importances not implemented in parent class."
         )
 
-    @property
-    def feature_importances(self) -> dict[str, float]:
+    def feature_importances(
+        self, df: pd.DataFrame | None
+    ) -> tuple[dict[str, float], list[dict[str, float]]]:
         """The feature importances of this model."""
         raise NotImplementedError(
             "feature_importances not implemented in parent class."

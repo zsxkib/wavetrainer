@@ -46,9 +46,10 @@ class TabPFNModel(Model):
     def supports_importances(self) -> bool:
         return False
 
-    @property
-    def feature_importances(self) -> dict[str, float]:
-        return {}
+    def feature_importances(
+        self, df: pd.DataFrame | None
+    ) -> tuple[dict[str, float], list[dict[str, float]]]:
+        return {}, []
 
     def provide_estimator(self):
         return self._provide_tabpfn()

@@ -60,8 +60,9 @@ class LightGBMModel(Model):
     def supports_importances(self) -> bool:
         return True
 
-    @property
-    def feature_importances(self) -> dict[str, float]:
+    def feature_importances(
+        self, df: pd.DataFrame | None
+    ) -> tuple[dict[str, float], list[dict[str, float]]]:
         gbm = self._provide_gbm()
         importances = gbm.feature_importances_
         names = gbm.feature_name_
@@ -69,7 +70,7 @@ class LightGBMModel(Model):
         return {
             names[count]: importance / total_importances
             for count, importance in enumerate(importances)
-        }
+        }, []
 
     def provide_estimator(self):
         return self._provide_gbm()

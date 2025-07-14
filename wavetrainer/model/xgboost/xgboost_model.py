@@ -119,8 +119,9 @@ class XGBoostModel(Model):
     def supports_importances(self) -> bool:
         return True
 
-    @property
-    def feature_importances(self) -> dict[str, float]:
+    def feature_importances(
+        self, df: pd.DataFrame | None
+    ) -> tuple[dict[str, float], list[dict[str, float]]]:
         bst = self._provide_xgboost()
         try:
             score_dict = bst.get_booster().get_score(importance_type="weight")  # type: ignore
@@ -128,10 +129,10 @@ class XGBoostModel(Model):
             return {
                 k: 0.0 if total == 0.0 else v / total  # type: ignore
                 for k, v in score_dict.items()  # type: ignore
-            }  # type: ignore
+            }, []  # type: ignore
         except XGBoostError as exc:
             print(str(exc))
-            return {}
+            return {}, []
 
     def provide_estimator(self):
         return self._provide_xgboost()

@@ -555,7 +555,7 @@ class Trainer(Fit):
 
         return self
 
-    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+    def transform(self, df: pd.DataFrame, optimistic: bool = False) -> pd.DataFrame:
         """Predict the expected values of the data."""
         tqdm.tqdm.pandas(desc="Inferring...")
         input_df = df.copy()
@@ -596,7 +596,19 @@ class Trainer(Fit):
                     if self._dt_column is None
                     else pd.DatetimeIndex(pd.to_datetime(group[self._dt_column]))
                 )
-                filtered_dates = [x for x in dates if x < group_dt_index.max()]
+
+                max_date = group_dt_index.max()
+                if not optimistic:
+                    if isinstance(self._validation_size, float):
+                        max_date = group_dt_index[
+                            -int(len(group_dt_index) * self._validation_size)
+                        ]
+                    elif isinstance(self._validation_size, int):
+                        max_date = group_dt_index[-self._validation_size]
+                    else:
+                        max_date = max_date - self._validation_size
+
+                filtered_dates = [x for x in dates if x < max_date]
                 if not filtered_dates:
                     filtered_dates = [dates[-1]]
                 date_str = dates[-1].isoformat()
@@ -647,7 +659,9 @@ class Trainer(Fit):
 
         return df
 
-    def feature_importances(self) -> dict[str, dict[str, float]]:
+    def feature_importances(
+        self, df: pd.DataFrame
+    ) -> dict[str, tuple[dict[str, float], list[dict[str, float]]]]:
         """Find the feature importances for the rolling models."""
         feature_importances = {}
 
@@ -662,7 +676,7 @@ class Trainer(Fit):
                 try:
                     model = ModelRouter(None, None)
                     model.load(date_path)
-                    feature_importances[date_str] = model.feature_importances
+                    feature_importances[date_str] = model.feature_importances(df)
                 except FileNotFoundError as exc:
                     logging.warning(str(exc))
 

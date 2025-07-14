@@ -117,7 +117,7 @@ class CalibratorRouter(Calibrator):
         )
         ce = CalibrationEvaluator(
             y.to_numpy(),
-            pred_prob[PROBABILITY_COLUMN_PREFIX + str(0)].to_numpy(),
+            pred_prob[PROBABILITY_COLUMN_PREFIX + str(1)].to_numpy(),
             outsample=True,
             n_groups="auto",
         )
@@ -125,7 +125,7 @@ class CalibratorRouter(Calibrator):
 
         fraction_of_positives, mean_predicted_value = calibration_curve(
             y.to_numpy(),
-            pred_prob[PROBABILITY_COLUMN_PREFIX + str(0)].to_numpy(),
+            pred_prob[PROBABILITY_COLUMN_PREFIX + str(1)].to_numpy(),
             n_bins=10,
             strategy="uniform",
         )

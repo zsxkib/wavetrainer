@@ -67,7 +67,7 @@ class Selector(Params, Fit):
 
         def set_current_features(required_features: int):
             nonlocal current_features
-            feature_importances = self._model.feature_importances
+            feature_importances, _ = self._model.feature_importances(None)
             if not feature_importances:
                 return
             current_features = sorted(

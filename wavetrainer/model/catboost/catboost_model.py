@@ -81,19 +81,31 @@ class CatboostModel(Model):
     def supports_importances(self) -> bool:
         return True
 
-    @property
-    def feature_importances(self) -> dict[str, float]:
+    def feature_importances(
+        self, df: pd.DataFrame | None
+    ) -> tuple[dict[str, float], list[dict[str, float]]]:
+        def importances_to_dict(importances: pd.DataFrame | None) -> dict[str, float]:
+            if importances is None:
+                raise ValueError("importances is null")
+            feature_ids = importances["Feature Id"].to_list()  # type: ignore
+            feature_importances = importances["Importances"].to_list()  # type: ignore
+            total = sum(feature_importances)
+            return {
+                feature_ids[x]: feature_importances[x] / total if total != 0.0 else 0.0
+                for x in range(len(feature_ids))
+            }
+
         catboost = self._provide_catboost()
         importances = catboost.get_feature_importance(prettified=True)
-        if importances is None:
-            raise ValueError("importances is null")
-        feature_ids = importances["Feature Id"].to_list()  # type: ignore
-        importances = importances["Importances"].to_list()  # type: ignore
-        total = sum(importances)
-        return {
-            feature_ids[x]: importances[x] / total if total != 0.0 else 0.0
-            for x in range(len(feature_ids))
-        }
+        global_importances = importances_to_dict(importances)  # type: ignore
+        row_importances = []
+        if df is not None:
+            for _, row in df.iterrows():
+                importances = catboost.get_feature_importance(
+                    data=row.to_frame(), prettified=True
+                )
+                row_importances.append(importances_to_dict(importances))  # type: ignore
+        return global_importances, row_importances
 
     def provide_estimator(self):
         return self._provide_catboost()
