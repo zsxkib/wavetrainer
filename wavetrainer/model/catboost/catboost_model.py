@@ -101,8 +101,15 @@ class CatboostModel(Model):
         row_importances = []
         if df is not None:
             for _, row in df.iterrows():
+                row_df = row.to_frame()
+                pred_pool = Pool(
+                    row_df,
+                    cat_features=row_df.select_dtypes(
+                        include="category"
+                    ).columns.tolist(),
+                )
                 importances = catboost.get_feature_importance(
-                    data=row.to_frame(), prettified=True
+                    data=pred_pool, prettified=True
                 )
                 row_importances.append(importances_to_dict(importances))  # type: ignore
         return global_importances, row_importances
@@ -236,7 +243,8 @@ class CatboostModel(Model):
             metric_period=100,
             eval_set=eval_pool,
         )
-        self._best_iteration = catboost.get_best_iteration()
+        if self._best_iteration is None:
+            self._best_iteration = catboost.get_best_iteration()
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:

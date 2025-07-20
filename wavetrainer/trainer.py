@@ -53,8 +53,26 @@ def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
     return len(bins) - 2  # Assign to last bin if at the end
 
 
-def _best_trial(study: optuna.Study) -> optuna.trial.FrozenTrial:
-    return study.best_trial
+def _best_trial(
+    study: optuna.Study, dt: datetime.datetime | None = None
+) -> optuna.trial.FrozenTrial:
+    if dt is None:
+        return study.best_trial
+    min_trial = None
+    for trial in study.trials:
+        if trial.value is None:
+            continue
+        dt_idx = datetime.datetime.fromisoformat(trial.user_attrs[_IDX_USR_ATTR_KEY])
+        if dt_idx == dt:
+            if min_trial is None:
+                min_trial = trial
+            elif min_trial.value is None:
+                min_trial = trial
+            elif min_trial.value > trial.value:
+                min_trial = trial
+    if min_trial is None:
+        min_trial = study.best_trial
+    return min_trial
     # best_brier = min(study.best_trials, key=lambda t: t.values[1])
     # return best_brier
 
@@ -477,7 +495,7 @@ class Trainer(Fit):
                 if found:
                     last_processed_dt = test_dt
                     _fit(
-                        _best_trial(study),
+                        _best_trial(study, dt=test_dt),
                         test_df.copy(),
                         test_series,
                         True,
@@ -496,7 +514,7 @@ class Trainer(Fit):
 
                 if test_idx < start_validation_index:
 
-                    def validate_objctive(
+                    def validate_objective(
                         trial: optuna.Trial,
                         idx: datetime.datetime,
                         series: pd.Series,
@@ -506,7 +524,7 @@ class Trainer(Fit):
 
                     study.optimize(
                         functools.partial(
-                            validate_objctive, idx=test_idx, series=test_series
+                            validate_objective, idx=test_idx, series=test_series
                         ),
                         n_trials=1,
                         timeout=None
@@ -517,7 +535,15 @@ class Trainer(Fit):
                     break
 
                 _fit(
-                    _best_trial(study),
+                    study.best_trial,
+                    test_df.copy(),
+                    test_series,
+                    False,
+                    test_idx,
+                    False,
+                )
+                _fit(
+                    _best_trial(study, dt=test_dt),
                     test_df.copy(),
                     test_series,
                     True,
@@ -537,15 +563,18 @@ class Trainer(Fit):
             #    height=600,
             # )
             for target_name in target_names:
-                fig = optuna.visualization.plot_param_importances(
-                    study, target=lambda t: t.values[0], target_name=target_name
-                )
-                fig.write_image(
-                    os.path.join(column_dir, f"{target_name}_frontier.png"),
-                    format="png",
-                    width=800,
-                    height=600,
-                )
+                try:
+                    fig = optuna.visualization.plot_param_importances(
+                        study, target=lambda t: t.values[0], target_name=target_name
+                    )
+                    fig.write_image(
+                        os.path.join(column_dir, f"{target_name}_frontier.png"),
+                        format="png",
+                        width=800,
+                        height=600,
+                    )
+                except RuntimeError as exc:
+                    print(str(exc))
 
         if isinstance(y, pd.Series):
             _fit_column(y)
