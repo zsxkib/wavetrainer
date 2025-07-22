@@ -3,7 +3,6 @@
 # pylint: disable=line-too-long
 import json
 import os
-import shutil
 from typing import Self
 
 import optuna
@@ -33,8 +32,6 @@ _DEFAULT_LOSS_FUNCTION = "default"
 _FOCALLOSS_LOSS_FUNCTION = "focalloss"
 _GAMMA_KEY = "focalloss_gamma"
 _ALPHA_KEY = "focalloss_alpha"
-_QUANTISATION_BORDERS_TMP_FILENAME = "borders.tmp.dat"
-_QUANTISATION_BORDERS_FILENAME = "borders.dat"
 
 
 class CatboostModel(Model):
@@ -55,7 +52,6 @@ class CatboostModel(Model):
     _loss_function: None | str
     _gamma: None | float
     _alpha: None | float
-    _quantisation_borders: None | str
 
     @classmethod
     def name(cls) -> str:
@@ -80,7 +76,6 @@ class CatboostModel(Model):
         self._loss_function = None
         self._gamma = None
         self._alpha = None
-        self._quantisation_borders = None
 
     @property
     def supports_importances(self) -> bool:
@@ -113,7 +108,6 @@ class CatboostModel(Model):
                         include="category"
                     ).columns.tolist(),
                 )
-                pred_pool.quantize(input_borders=self._quantisation_borders)
                 importances = catboost.get_feature_importance(
                     data=pred_pool, prettified=True
                 )
@@ -178,9 +172,6 @@ class CatboostModel(Model):
             self._categorical_features = json.load(handle)
         catboost = self._provide_catboost()
         catboost.load_model(os.path.join(folder, _MODEL_FILENAME))
-        self._quantisation_borders = os.path.join(
-            folder, _QUANTISATION_BORDERS_FILENAME
-        )
 
     def save(self, folder: str, trial: optuna.Trial | optuna.trial.FrozenTrial) -> None:
         with open(
@@ -211,10 +202,6 @@ class CatboostModel(Model):
         catboost = self._provide_catboost()
         catboost.save_model(os.path.join(folder, _MODEL_FILENAME))
         trial.set_user_attr(_BEST_ITERATION_KEY, self._best_iteration)
-        shutil.copy(
-            _QUANTISATION_BORDERS_TMP_FILENAME,
-            os.path.join(folder, _QUANTISATION_BORDERS_FILENAME),
-        )
 
     def fit(
         self,
@@ -238,9 +225,6 @@ class CatboostModel(Model):
             weight=w,
             cat_features=df.select_dtypes(include="category").columns.tolist(),
         )
-        train_pool.quantize(random_seed=77)
-        train_pool.save_quantization_borders(_QUANTISATION_BORDERS_TMP_FILENAME)
-        self._quantisation_borders = _QUANTISATION_BORDERS_TMP_FILENAME
         eval_pool = (
             Pool(
                 eval_x,
@@ -250,8 +234,6 @@ class CatboostModel(Model):
             if eval_x is not None
             else None
         )
-        if eval_pool is not None:
-            eval_pool.quantize(input_borders=self._quantisation_borders)
         if self._best_iteration is not None:
             eval_pool = None
         catboost.fit(
@@ -274,7 +256,6 @@ class CatboostModel(Model):
             df,
             cat_features=df.select_dtypes(include="category").columns.tolist(),
         )
-        pred_pool.quantize(input_borders=self._quantisation_borders)
         catboost = self._provide_catboost()
         pred = catboost.predict(pred_pool)
         df = pd.DataFrame(
