@@ -306,6 +306,7 @@ class CatboostModel(Model):
                     task_type="GPU" if torch.cuda.is_available() else "CPU",
                     devices="0" if torch.cuda.is_available() else None,
                     loss_function=loss_function,
+                    gpu_cat_features_storage="CpuPinnedMemory",
                 )
             case ModelType.REGRESSION:
                 return CatBoostRegressorWrapper(
@@ -318,6 +319,7 @@ class CatboostModel(Model):
                     metric_period=100,
                     task_type="GPU" if torch.cuda.is_available() else "CPU",
                     devices="0" if torch.cuda.is_available() else None,
+                    gpu_cat_features_storage="CpuPinnedMemory",
                 )
             case ModelType.BINNED_BINARY:
                 return CatBoostClassifierWrapper(
@@ -331,6 +333,7 @@ class CatboostModel(Model):
                     task_type="GPU" if torch.cuda.is_available() else "CPU",
                     devices="0" if torch.cuda.is_available() else None,
                     loss_function=loss_function,
+                    gpu_cat_features_storage="CpuPinnedMemory",
                 )
             case ModelType.MULTI_CLASSIFICATION:
                 return CatBoostClassifierWrapper(
@@ -344,6 +347,7 @@ class CatboostModel(Model):
                     task_type="GPU" if torch.cuda.is_available() else "CPU",
                     devices="0" if torch.cuda.is_available() else None,
                     loss_function=loss_function,
+                    gpu_cat_features_storage="CpuPinnedMemory",
                 )
             case _:
                 raise ValueError(f"Unrecognised model type: {self._model_type}")
