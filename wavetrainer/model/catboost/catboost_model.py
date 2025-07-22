@@ -133,7 +133,7 @@ class CatboostModel(Model):
         self._iterations = trial.suggest_int(_ITERATIONS_KEY, 100, 10000)
         self._learning_rate = trial.suggest_float(_LEARNING_RATE_KEY, 0.001, 0.3)
         self._depth = trial.suggest_int(
-            _DEPTH_KEY, 1, 2 if pytest_is_running.is_running() else 7
+            _DEPTH_KEY, 1, 2 if pytest_is_running.is_running() else 6
         )
         self._l2_leaf_reg = trial.suggest_float(_L2_LEAF_REG_KEY, 3.0, 50.0)
         self._boosting_type = trial.suggest_categorical(
@@ -307,7 +307,6 @@ class CatboostModel(Model):
                     devices="0" if torch.cuda.is_available() else None,
                     loss_function=loss_function,
                     gpu_cat_features_storage="CpuPinnedMemory",
-                    gpu_ram_part=0.8,
                 )
             case ModelType.REGRESSION:
                 return CatBoostRegressorWrapper(
@@ -321,7 +320,6 @@ class CatboostModel(Model):
                     task_type="GPU" if torch.cuda.is_available() else "CPU",
                     devices="0" if torch.cuda.is_available() else None,
                     gpu_cat_features_storage="CpuPinnedMemory",
-                    gpu_ram_part=0.8,
                 )
             case ModelType.BINNED_BINARY:
                 return CatBoostClassifierWrapper(
@@ -336,7 +334,6 @@ class CatboostModel(Model):
                     devices="0" if torch.cuda.is_available() else None,
                     loss_function=loss_function,
                     gpu_cat_features_storage="CpuPinnedMemory",
-                    gpu_ram_part=0.8,
                 )
             case ModelType.MULTI_CLASSIFICATION:
                 return CatBoostClassifierWrapper(
@@ -351,7 +348,6 @@ class CatboostModel(Model):
                     devices="0" if torch.cuda.is_available() else None,
                     loss_function=loss_function,
                     gpu_cat_features_storage="CpuPinnedMemory",
-                    gpu_ram_part=0.8,
                 )
             case _:
                 raise ValueError(f"Unrecognised model type: {self._model_type}")
