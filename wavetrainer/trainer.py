@@ -709,9 +709,23 @@ class Trainer(Fit):
                 if not os.path.isdir(date_path):
                     continue
                 try:
+                    reducer = CombinedReducer(
+                        self.embedding_cols,
+                        self._correlation_chunk_size,
+                        self._insert_nulls,
+                    )
+                    reducer.load(date_path)
+
                     model = ModelRouter(None, None)
                     model.load(date_path)
-                    feature_importances[date_str] = model.feature_importances(df)
+
+                    selector = Selector(model)
+                    selector.load(date_path)
+
+                    x_pred = reducer.transform(df)
+                    x_pred = selector.transform(x_pred)
+
+                    feature_importances[date_str] = model.feature_importances(x_pred)
                 except FileNotFoundError as exc:
                     logging.warning(str(exc))
 
