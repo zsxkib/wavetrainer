@@ -32,13 +32,16 @@ class CombinedReducer(Reducer):
     _folder: str | None
 
     def __init__(
-        self, embedding_cols: list[list[str]] | None, correlation_chunk_size: int | None
+        self,
+        embedding_cols: list[list[str]] | None,
+        correlation_chunk_size: int | None,
+        insert_null: bool = False,
     ):
         super().__init__()
         if correlation_chunk_size is None:
             correlation_chunk_size = 500
         self._reducers = [
-            UnseenReducer(),
+            UnseenReducer(insert_null),
             NonNumericReducer(),
             PCAReducer(embedding_cols),
             # ConstantReducer(),
@@ -50,6 +53,7 @@ class CombinedReducer(Reducer):
         self._folder = None
         self._embedding_cols = embedding_cols
         self._correlation_chunk_size = correlation_chunk_size
+        self._insert_null = insert_null
 
     @classmethod
     def name(cls) -> str:
@@ -79,7 +83,7 @@ class CombinedReducer(Reducer):
                 elif reducer_name == NonNumericReducer.name():
                     self._reducers.append(NonNumericReducer())
                 elif reducer_name == UnseenReducer.name():
-                    self._reducers.append(UnseenReducer())
+                    self._reducers.append(UnseenReducer(self._insert_null))
                 elif reducer_name == SmartCorrelationReducer.name():
                     self._reducers.append(SmartCorrelationReducer())
                 elif reducer_name == SelectBySingleFeaturePerformanceReducer.name():

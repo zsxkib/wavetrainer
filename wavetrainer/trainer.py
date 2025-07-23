@@ -96,6 +96,7 @@ class Trainer(Fit):
         allowed_models: set[str] | None = None,
         max_false_positive_reduction_steps: int | None = None,
         correlation_chunk_size: int | None = None,
+        insert_nulls: bool = False,
     ):
         tqdm.tqdm.pandas()
 
@@ -198,6 +199,7 @@ class Trainer(Fit):
         self._allowed_models = allowed_models
         self._max_false_positive_reduction_steps = max_false_positive_reduction_steps
         self._correlation_chunk_size = correlation_chunk_size
+        self._insert_nulls = insert_nulls
 
     def _provide_study(self, column: str) -> optuna.Study:
         storage_name = f"sqlite:///{self._folder}/{column}/{_STUDYDB_FILENAME}"
@@ -300,7 +302,9 @@ class Trainer(Fit):
                     # Perform common reductions
                     start_reducer = time.time()
                     reducer = CombinedReducer(
-                        self.embedding_cols, self._correlation_chunk_size
+                        self.embedding_cols,
+                        self._correlation_chunk_size,
+                        self._insert_nulls,
                     )
                     reducer.set_options(trial, x)
                     x_train = reducer.fit_transform(x_train, y=y_train)
@@ -644,7 +648,9 @@ class Trainer(Fit):
                 folder = os.path.join(column_path, date_str)
 
                 reducer = CombinedReducer(
-                    self.embedding_cols, self._correlation_chunk_size
+                    self.embedding_cols,
+                    self._correlation_chunk_size,
+                    self._insert_nulls,
                 )
                 reducer.load(folder)
 

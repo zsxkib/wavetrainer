@@ -16,10 +16,12 @@ class UnseenReducer(Reducer):
     """A class that removes unseen columns from a dataframe."""
 
     # pylint: disable=too-many-positional-arguments,too-many-arguments
+    _seen_features: list[str]
 
-    def __init__(self):
+    def __init__(self, insert_null: bool):
         super().__init__()
         self._seen_features = []
+        self._insert_null = insert_null
 
     @classmethod
     def name(cls) -> str:
@@ -57,4 +59,13 @@ class UnseenReducer(Reducer):
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        cols = set(df.columns.values.tolist())
+        seen_features = set(self._seen_features)
+        if self._insert_null:
+            # Are we missing features?
+            missing_features = seen_features - cols
+            for missing_feature in missing_features:
+                print(f"Adding back {missing_features} as null")
+                df[missing_feature] = None
+                df[missing_feature] = df[missing_feature].astype(float)
         return df[self._seen_features]
