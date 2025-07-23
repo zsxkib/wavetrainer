@@ -612,6 +612,7 @@ class Trainer(Fit):
                 dates.append(datetime.datetime.fromisoformat(date_str))
             if not dates:
                 raise ValueError(f"no dates found for {column}.")
+            dates = sorted(dates)
             bins: list[datetime.datetime] = sorted(
                 [dt_index.min().to_pydatetime()]
                 + dates
@@ -644,7 +645,7 @@ class Trainer(Fit):
                 filtered_dates = [x for x in dates if x < max_date]
                 if not filtered_dates:
                     filtered_dates = [dates[-1]]
-                date_str = dates[-1].isoformat()
+                date_str = filtered_dates[-1].isoformat()
                 folder = os.path.join(column_path, date_str)
 
                 reducer = CombinedReducer(
@@ -695,7 +696,7 @@ class Trainer(Fit):
         return df
 
     def feature_importances(
-        self, df: pd.DataFrame
+        self, df: pd.DataFrame, latest_date_only: bool = False
     ) -> dict[str, tuple[dict[str, float], list[dict[str, float]]]]:
         """Find the feature importances for the rolling models."""
         feature_importances = {}
@@ -704,10 +705,16 @@ class Trainer(Fit):
             column_path = os.path.join(self._folder, column)
             if not os.path.isdir(column_path):
                 continue
-            for date_str in os.listdir(column_path):
-                date_path = os.path.join(column_path, date_str)
-                if not os.path.isdir(date_path):
-                    continue
+            date_paths = sorted(
+                [
+                    os.path.join(column_path, x)
+                    for x in list(os.listdir(column_path))
+                    if os.path.isdir(os.path.join(column_path, x))
+                ]
+            )
+            if latest_date_only:
+                date_paths = date_paths[-1:]
+            for date_path in tqdm.tqdm(date_paths):
                 try:
                     reducer = CombinedReducer(
                         self.embedding_cols,
@@ -725,7 +732,9 @@ class Trainer(Fit):
                     x_pred = reducer.transform(df)
                     x_pred = selector.transform(x_pred)
 
-                    feature_importances[date_str] = model.feature_importances(x_pred)
+                    feature_importances[date_path.split("/")[-1]] = (
+                        model.feature_importances(x_pred)
+                    )
                 except FileNotFoundError as exc:
                     logging.warning(str(exc))
 
