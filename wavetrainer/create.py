@@ -19,6 +19,7 @@ def create(
     allowed_models: set[str] | None = None,
     max_false_positive_reduction_steps: int | None = None,
     correlation_chunk_size: int | None = None,
+    insert_null: bool = False,
 ) -> Trainer:
     """Create a trainer."""
     return Trainer(
@@ -33,4 +34,5 @@ def create(
         allowed_models=allowed_models,
         max_false_positive_reduction_steps=max_false_positive_reduction_steps,
         correlation_chunk_size=correlation_chunk_size,
+        insert_nulls=insert_null,
     )
