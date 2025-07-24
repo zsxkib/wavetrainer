@@ -215,7 +215,7 @@ class Trainer(Fit):
             sampler=restored_sampler,
             directions=[
                 # optuna.study.StudyDirection.MAXIMIZE,
-                optuna.study.StudyDirection.MAXIMIZE,
+                optuna.study.StudyDirection.MINIMIZE,
             ],
         )
 
@@ -411,14 +411,14 @@ class Trainer(Fit):
                             )
 
                     # return output, loss
-                    return pvalue
+                    return loss
                 except WavetrainException as exc:
                     print(str(exc))
                     logging.warning(str(exc))
                     if new_folder:
                         os.removedirs(folder)
                     # return _BAD_OUTPUT, -_BAD_OUTPUT
-                    return _BAD_OUTPUT
+                    return -_BAD_OUTPUT
 
             start_validation_index = (
                 dt_index.to_list()[-int(len(dt_index) * self._validation_size) - 1]
