@@ -43,7 +43,7 @@ _IDX_USR_ATTR_KEY = "idx"
 _DT_COLUMN_KEY = "dt_column"
 _MAX_FALSE_POSITIVE_REDUCTION_STEPS_KEY = "max_false_positive_reduction_steps"
 _CORRELATION_CHUNK_SIZE_KEY = "correlation_chunk_size"
-_BAD_OUTPUT = 1000.0
+_BAD_OUTPUT = -1000.0
 
 
 def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
@@ -58,21 +58,21 @@ def _best_trial(
 ) -> optuna.trial.FrozenTrial:
     if dt is None:
         return study.best_trial
-    min_trial = None
+    max_trial = None
     for trial in study.trials:
         if trial.value is None:
             continue
         dt_idx = datetime.datetime.fromisoformat(trial.user_attrs[_IDX_USR_ATTR_KEY])
         if dt_idx == dt:
-            if min_trial is None:
-                min_trial = trial
-            elif min_trial.value is None:
-                min_trial = trial
-            elif min_trial.value > trial.value:
-                min_trial = trial
-    if min_trial is None:
-        min_trial = study.best_trial
-    return min_trial
+            if max_trial is None:
+                max_trial = trial
+            elif max_trial.value is None:
+                max_trial = trial
+            elif max_trial.value < trial.value:
+                max_trial = trial
+    if max_trial is None:
+        max_trial = study.best_trial
+    return max_trial
     # best_brier = min(study.best_trials, key=lambda t: t.values[1])
     # return best_brier
 
@@ -215,7 +215,7 @@ class Trainer(Fit):
             sampler=restored_sampler,
             directions=[
                 # optuna.study.StudyDirection.MAXIMIZE,
-                optuna.study.StudyDirection.MINIMIZE,
+                optuna.study.StudyDirection.MAXIMIZE,
             ],
         )
 
@@ -368,6 +368,7 @@ class Trainer(Fit):
                     cal_pred[PREDICTION_COLUMN] = y_pred[PREDICTION_COLUMN]
                     output = 0.0
                     loss = 0.0
+                    pvalue = 0.0
                     if determine_model_type(y_series) == ModelType.REGRESSION:
                         output = float(r2_score(y_test, y_pred[[PREDICTION_COLUMN]]))
                         print(f"R2: {output}")
@@ -377,10 +378,12 @@ class Trainer(Fit):
                         prob_col = PROBABILITY_COLUMN_PREFIX + str(1)
                         if prob_col in y_pred.columns.values.tolist():
                             loss = float(brier_score_loss(y_test, y_pred[[prob_col]]))
+                            pvalue = calibrator.p_value
                             print(f"Brier: {loss}")
                             print(
                                 f"Log Loss: {float(log_loss(y_test.astype(float), y_pred[[prob_col]]))}"
                             )
+                            print(f"P-Value: {pvalue}")
                         print(
                             f"Accuracy: {float(accuracy_score(y_test, y_pred[[PREDICTION_COLUMN]]))}"
                         )
@@ -408,14 +411,14 @@ class Trainer(Fit):
                             )
 
                     # return output, loss
-                    return loss
+                    return pvalue
                 except WavetrainException as exc:
                     print(str(exc))
                     logging.warning(str(exc))
                     if new_folder:
                         os.removedirs(folder)
                     # return _BAD_OUTPUT, -_BAD_OUTPUT
-                    return -_BAD_OUTPUT
+                    return _BAD_OUTPUT
 
             start_validation_index = (
                 dt_index.to_list()[-int(len(dt_index) * self._validation_size) - 1]
@@ -546,7 +549,7 @@ class Trainer(Fit):
                     test_idx,
                     False,
                 )
-                _fit(
+                value = _fit(
                     _best_trial(study, dt=test_dt),
                     test_df.copy(),
                     test_series,
@@ -554,6 +557,7 @@ class Trainer(Fit):
                     test_idx,
                     True,
                 )
+                print(f"Saved model with value: {value}")
                 last_processed_dt = test_idx
 
             target_names = ["F1", "Brier"]
@@ -647,6 +651,7 @@ class Trainer(Fit):
                     filtered_dates = [dates[-1]]
                 date_str = filtered_dates[-1].isoformat()
                 folder = os.path.join(column_path, date_str)
+                print(f"Loading {folder}")
 
                 reducer = CombinedReducer(
                     self.embedding_cols,

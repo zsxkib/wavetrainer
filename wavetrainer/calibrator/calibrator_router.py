@@ -31,15 +31,22 @@ class CalibratorRouter(Calibrator):
 
     _calibrator: Calibrator | None
     _calibration_buffer: io.BytesIO | None
+    _p_value: float
 
     def __init__(self, model: Model):
         super().__init__(model)
         self._calibrator = None
         self._calibration_buffer = None
+        self._p_value = 0.0
 
     @classmethod
     def name(cls) -> str:
         return "router"
+
+    @property
+    def p_value(self) -> float:
+        """Find the p value of the fitted calibration."""
+        return self._p_value
 
     def predictions_as_x(self, y: pd.Series | pd.DataFrame | None = None) -> bool:
         calibrator = self._calibrator
@@ -121,7 +128,9 @@ class CalibratorRouter(Calibrator):
             outsample=True,
             n_groups="auto",
         )
-        print(f"Hosmer Lemeshow: {ce.hosmerlemeshow()}")
+        hosmer_lemeshow = ce.hosmerlemeshow()
+        print(f"Hosmer Lemeshow: {hosmer_lemeshow}")
+        self._p_value = hosmer_lemeshow.pvalue
 
         fraction_of_positives, mean_predicted_value = calibration_curve(
             y.to_numpy(),
