@@ -43,7 +43,7 @@ _IDX_USR_ATTR_KEY = "idx"
 _DT_COLUMN_KEY = "dt_column"
 _MAX_FALSE_POSITIVE_REDUCTION_STEPS_KEY = "max_false_positive_reduction_steps"
 _CORRELATION_CHUNK_SIZE_KEY = "correlation_chunk_size"
-_BAD_OUTPUT = -1000.0
+_BAD_OUTPUT = 1000.0
 
 
 def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
