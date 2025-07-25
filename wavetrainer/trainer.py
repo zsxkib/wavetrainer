@@ -58,21 +58,21 @@ def _best_trial(
 ) -> optuna.trial.FrozenTrial:
     if dt is None:
         return study.best_trial
-    max_trial = None
+    min_trial = None
     for trial in study.trials:
         if trial.value is None:
             continue
         dt_idx = datetime.datetime.fromisoformat(trial.user_attrs[_IDX_USR_ATTR_KEY])
         if dt_idx == dt:
-            if max_trial is None:
-                max_trial = trial
-            elif max_trial.value is None:
-                max_trial = trial
-            elif max_trial.value < trial.value:
-                max_trial = trial
-    if max_trial is None:
-        max_trial = study.best_trial
-    return max_trial
+            if min_trial is None:
+                min_trial = trial
+            elif min_trial.value is None:
+                min_trial = trial
+            elif min_trial.value > trial.value:
+                min_trial = trial
+    if min_trial is None:
+        min_trial = study.best_trial
+    return min_trial
     # best_brier = min(study.best_trials, key=lambda t: t.values[1])
     # return best_brier
 
