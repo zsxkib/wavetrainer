@@ -541,7 +541,7 @@ class Trainer(Fit):
                 else:
                     break
 
-                _fit(
+                value = _fit(
                     study.best_trial,
                     test_df.copy(),
                     test_series,
@@ -549,8 +549,16 @@ class Trainer(Fit):
                     test_idx,
                     False,
                 )
+                best_dt_trial = _best_trial(study, dt=test_dt)
+                best_trial = (
+                    study.best_trial
+                    if best_dt_trial is None
+                    or value
+                    < (0.0 if best_dt_trial.value is None else best_dt_trial.value)
+                    else best_dt_trial
+                )
                 value = _fit(
-                    _best_trial(study, dt=test_dt),
+                    best_trial,
                     test_df.copy(),
                     test_series,
                     True,
