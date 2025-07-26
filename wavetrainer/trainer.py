@@ -1,6 +1,6 @@
 """The trainer class."""
 
-# pylint: disable=line-too-long
+# pylint: disable=line-too-long,unused-argument
 import datetime
 import functools
 import json
@@ -56,6 +56,7 @@ def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
 def _best_trial(
     study: optuna.Study, dt: datetime.datetime | None = None
 ) -> optuna.trial.FrozenTrial:
+    """
     if dt is None:
         return study.best_trial
     min_trial = None
@@ -73,8 +74,9 @@ def _best_trial(
     if min_trial is None:
         min_trial = study.best_trial
     return min_trial
-    # best_brier = min(study.best_trials, key=lambda t: t.values[1])
-    # return best_brier
+    """
+    best_brier = min(study.best_trials, key=lambda t: t.values[1])
+    return best_brier
 
 
 class Trainer(Fit):
@@ -214,7 +216,7 @@ class Trainer(Fit):
             load_if_exists=True,
             sampler=restored_sampler,
             directions=[
-                # optuna.study.StudyDirection.MAXIMIZE,
+                optuna.study.StudyDirection.MAXIMIZE,
                 optuna.study.StudyDirection.MINIMIZE,
             ],
         )
@@ -256,8 +258,8 @@ class Trainer(Fit):
                 save: bool,
                 split_idx: datetime.datetime,
                 no_evaluation: bool,
-                # ) -> tuple[float, float]:
-            ) -> float:
+            ) -> tuple[float, float]:
+                # ) -> float:
                 print(f"Beginning trial for: {split_idx.isoformat()}")
                 trial.set_user_attr(_IDX_USR_ATTR_KEY, split_idx.isoformat())
                 folder = os.path.join(
@@ -296,7 +298,7 @@ class Trainer(Fit):
                             os.removedirs(folder)
                         logging.warning("Y train only contains 1 unique datapoint.")
                         # return _BAD_OUTPUT, -_BAD_OUTPUT
-                        return -_BAD_OUTPUT
+                        return _BAD_OUTPUT, -_BAD_OUTPUT
                     print(f"Windowing took {time.time() - start_windower}")
 
                     # Perform common reductions
@@ -411,14 +413,14 @@ class Trainer(Fit):
                             )
 
                     # return output, loss
-                    return loss
+                    return pvalue, loss
                 except WavetrainException as exc:
                     print(str(exc))
                     logging.warning(str(exc))
                     if new_folder:
                         os.removedirs(folder)
                     # return _BAD_OUTPUT, -_BAD_OUTPUT
-                    return -_BAD_OUTPUT
+                    return _BAD_OUTPUT, -_BAD_OUTPUT
 
             start_validation_index = (
                 dt_index.to_list()[-int(len(dt_index) * self._validation_size) - 1]
@@ -439,8 +441,8 @@ class Trainer(Fit):
                 ].to_list()[0]
             )
 
-            # def test_objective(trial: optuna.Trial) -> tuple[float, float]:
-            def test_objective(trial: optuna.Trial) -> float:
+            def test_objective(trial: optuna.Trial) -> tuple[float, float]:
+                # def test_objective(trial: optuna.Trial) -> float:
                 return _fit(
                     trial,
                     test_df,
@@ -525,8 +527,8 @@ class Trainer(Fit):
                         trial: optuna.Trial,
                         idx: datetime.datetime,
                         series: pd.Series,
-                        # ) -> tuple[float, float]:
-                    ) -> float:
+                    ) -> tuple[float, float]:
+                        # ) -> float:
                         return _fit(trial, test_df.copy(), series, False, idx, False)
 
                     study.optimize(
@@ -542,23 +544,7 @@ class Trainer(Fit):
                     break
 
                 value = _fit(
-                    study.best_trial,
-                    test_df.copy(),
-                    test_series,
-                    False,
-                    test_idx,
-                    False,
-                )
-                best_dt_trial = _best_trial(study, dt=test_dt)
-                best_trial = (
-                    study.best_trial
-                    if best_dt_trial is None
-                    or value
-                    < (0.0 if best_dt_trial.value is None else best_dt_trial.value)
-                    else best_dt_trial
-                )
-                value = _fit(
-                    best_trial,
+                    _best_trial(study, dt=test_dt),
                     test_df.copy(),
                     test_series,
                     True,
