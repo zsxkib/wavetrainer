@@ -661,30 +661,34 @@ class Trainer(Fit):
                 folder = os.path.join(column_path, date_str)
                 print(f"Loading {folder}")
 
-                reducer = CombinedReducer(
-                    self.embedding_cols,
-                    self._correlation_chunk_size,
-                    self._insert_nulls,
-                )
-                reducer.load(folder)
+                try:
+                    reducer = CombinedReducer(
+                        self.embedding_cols,
+                        self._correlation_chunk_size,
+                        self._insert_nulls,
+                    )
+                    reducer.load(folder)
 
-                model = ModelRouter(None, None)
-                model.load(folder)
+                    model = ModelRouter(None, None)
+                    model.load(folder)
 
-                selector = Selector(model)
-                selector.load(folder)
+                    selector = Selector(model)
+                    selector.load(folder)
 
-                calibrator = CalibratorRouter(model)
-                calibrator.load(folder)
+                    calibrator = CalibratorRouter(model)
+                    calibrator.load(folder)
 
-                x_pred = reducer.transform(group[feature_columns])
-                x_pred = selector.transform(x_pred)
-                y_pred = model.transform(x_pred)
-                y_pred = calibrator.transform(
-                    y_pred if calibrator.predictions_as_x(None) else x_pred
-                )
-                for new_column in y_pred.columns.values:
-                    group["_".join([column, new_column])] = y_pred[new_column]
+                    x_pred = reducer.transform(group[feature_columns])
+                    x_pred = selector.transform(x_pred)
+                    y_pred = model.transform(x_pred)
+                    y_pred = calibrator.transform(
+                        y_pred if calibrator.predictions_as_x(None) else x_pred
+                    )
+                    for new_column in y_pred.columns.values:
+                        group["_".join([column, new_column])] = y_pred[new_column]
+                except FileNotFoundError as exc:
+                    print(str(exc))
+
                 return group
 
             old_index = dt_index.copy()
