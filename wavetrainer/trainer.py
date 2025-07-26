@@ -621,6 +621,8 @@ class Trainer(Fit):
                 date_path = os.path.join(column_path, date_str)
                 if not os.path.isdir(date_path):
                     continue
+                if not os.listdir(date_path):
+                    continue
                 dates.append(datetime.datetime.fromisoformat(date_str))
             if not dates:
                 raise ValueError(f"no dates found for {column}.")
