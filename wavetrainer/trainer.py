@@ -729,6 +729,7 @@ class Trainer(Fit):
                     os.path.join(column_path, x)
                     for x in list(os.listdir(column_path))
                     if os.path.isdir(os.path.join(column_path, x))
+                    and os.listdir(os.path.join(column_path, x))
                 ]
             )
             if latest_date_only:
