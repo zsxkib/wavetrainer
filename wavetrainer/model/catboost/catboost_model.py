@@ -245,6 +245,7 @@ class CatboostModel(Model):
         )
         if self._best_iteration is None:
             self._best_iteration = catboost.get_best_iteration()
+            print(f"Setting best iteration: {self._best_iteration}")
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -283,7 +284,7 @@ class CatboostModel(Model):
         best_iteration = self._best_iteration
         iterations = best_iteration if best_iteration is not None else self._iterations
         print(
-            f"Creating catboost model with depth {self._depth}, boosting type {self._boosting_type}, best iteration {best_iteration}",
+            f"Creating catboost model with depth {self._depth}, boosting type {self._boosting_type}, best iteration {best_iteration}, iterations {iterations}",
         )
         loss_function = None
         if (
