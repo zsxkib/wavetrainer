@@ -75,8 +75,9 @@ def _best_trial(
         min_trial = study.best_trial
     return min_trial
     """
-    best_brier = min(study.best_trials, key=lambda t: t.values[1])
-    return best_brier
+    # best_brier = min(study.best_trials, key=lambda t: t.values[1])
+    # return best_brier
+    return study.best_trial
 
 
 class Trainer(Fit):
@@ -216,7 +217,7 @@ class Trainer(Fit):
             load_if_exists=True,
             sampler=restored_sampler,
             directions=[
-                optuna.study.StudyDirection.MAXIMIZE,
+                # optuna.study.StudyDirection.MAXIMIZE,
                 optuna.study.StudyDirection.MINIMIZE,
             ],
         )
@@ -258,8 +259,8 @@ class Trainer(Fit):
                 save: bool,
                 split_idx: datetime.datetime,
                 no_evaluation: bool,
-            ) -> tuple[float, float]:
-                # ) -> float:
+                # ) -> tuple[float, float]:
+            ) -> float:
                 print(f"Beginning trial for: {split_idx.isoformat()}")
                 trial.set_user_attr(_IDX_USR_ATTR_KEY, split_idx.isoformat())
                 folder = os.path.join(
@@ -298,7 +299,8 @@ class Trainer(Fit):
                             os.removedirs(folder)
                         logging.warning("Y train only contains 1 unique datapoint.")
                         # return _BAD_OUTPUT, -_BAD_OUTPUT
-                        return _BAD_OUTPUT, -_BAD_OUTPUT
+                        # return _BAD_OUTPUT, -_BAD_OUTPUT
+                        return -_BAD_OUTPUT
                     print(f"Windowing took {time.time() - start_windower}")
 
                     # Perform common reductions
@@ -371,6 +373,7 @@ class Trainer(Fit):
                     output = 0.0
                     loss = 0.0
                     pvalue = 0.0
+                    log_loss_value = 0.0
                     if determine_model_type(y_series) == ModelType.REGRESSION:
                         output = float(r2_score(y_test, y_pred[[PREDICTION_COLUMN]]))
                         print(f"R2: {output}")
@@ -380,11 +383,12 @@ class Trainer(Fit):
                         prob_col = PROBABILITY_COLUMN_PREFIX + str(1)
                         if prob_col in y_pred.columns.values.tolist():
                             loss = float(brier_score_loss(y_test, y_pred[[prob_col]]))
+                            log_loss_value = float(
+                                log_loss(y_test.astype(float), y_pred[[prob_col]])
+                            )
                             pvalue = calibrator.p_value
                             print(f"Brier: {loss}")
-                            print(
-                                f"Log Loss: {float(log_loss(y_test.astype(float), y_pred[[prob_col]]))}"
-                            )
+                            print(f"Log Loss: {log_loss_value}")
                             print(f"P-Value: {pvalue}")
                         print(
                             f"Accuracy: {float(accuracy_score(y_test, y_pred[[PREDICTION_COLUMN]]))}"
@@ -413,14 +417,16 @@ class Trainer(Fit):
                             )
 
                     # return output, loss
-                    return pvalue, loss
+                    # return pvalue, loss
+                    return log_loss_value
                 except WavetrainException as exc:
                     print(str(exc))
                     logging.warning(str(exc))
                     if new_folder:
                         os.removedirs(folder)
                     # return _BAD_OUTPUT, -_BAD_OUTPUT
-                    return _BAD_OUTPUT, -_BAD_OUTPUT
+                    # return _BAD_OUTPUT, -_BAD_OUTPUT
+                    return -_BAD_OUTPUT
 
             start_validation_index = (
                 dt_index.to_list()[-int(len(dt_index) * self._validation_size) - 1]
@@ -441,8 +447,8 @@ class Trainer(Fit):
                 ].to_list()[0]
             )
 
-            def test_objective(trial: optuna.Trial) -> tuple[float, float]:
-                # def test_objective(trial: optuna.Trial) -> float:
+            # def test_objective(trial: optuna.Trial) -> tuple[float, float]:
+            def test_objective(trial: optuna.Trial) -> float:
                 return _fit(
                     trial,
                     test_df,
@@ -527,8 +533,8 @@ class Trainer(Fit):
                         trial: optuna.Trial,
                         idx: datetime.datetime,
                         series: pd.Series,
-                    ) -> tuple[float, float]:
-                        # ) -> float:
+                        # ) -> tuple[float, float]:
+                    ) -> float:
                         return _fit(trial, test_df.copy(), series, False, idx, False)
 
                     study.optimize(
