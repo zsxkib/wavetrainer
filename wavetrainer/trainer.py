@@ -56,7 +56,27 @@ def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
 def _best_trial(
     study: optuna.Study, dt: datetime.datetime | None = None
 ) -> optuna.trial.FrozenTrial:
-    """
+    """Handle both single and multi-objective studies"""
+    # Handle multi-objective studies first
+    if len(study.directions) > 1:
+        if dt is None:
+            # No specific date - use best from Pareto frontier
+            best_trials = study.best_trials
+            return max(best_trials, key=lambda t: t.values[0]) if best_trials else None
+        else:
+            # Specific date - search ALL trials (not just Pareto optimal)
+            # This matches the behavior of the 'found' check
+            matching_trials = []
+            for trial in study.trials:
+                if (trial.state == optuna.trial.TrialState.COMPLETE and 
+                    _IDX_USR_ATTR_KEY in trial.user_attrs):
+                    dt_idx = datetime.datetime.fromisoformat(trial.user_attrs[_IDX_USR_ATTR_KEY])
+                    if dt_idx == dt:
+                        matching_trials.append(trial)
+            # Return best of matching trials by first objective
+            return max(matching_trials, key=lambda t: t.values[0]) if matching_trials else None
+    
+    # Single-objective original logic
     if dt is None:
         return study.best_trial
     min_trial = None
@@ -74,10 +94,6 @@ def _best_trial(
     if min_trial is None:
         min_trial = study.best_trial
     return min_trial
-    """
-    # best_brier = min(study.best_trials, key=lambda t: t.values[1])
-    # return best_brier
-    return study.best_trial
 
 
 class Trainer(Fit):
