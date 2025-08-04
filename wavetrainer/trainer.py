@@ -56,13 +56,25 @@ def _assign_bin(timestamp, bins: list[datetime.datetime]) -> int:
 def _best_trial(
     study: optuna.Study, dt: datetime.datetime | None = None
 ) -> optuna.trial.FrozenTrial:
-    """Handle both single and multi-objective studies"""
+    """Handle both single and multi-objective studies - never returns None"""
     # Handle multi-objective studies first
     if len(study.directions) > 1:
         if dt is None:
             # No specific date - use best from Pareto frontier
             best_trials = study.best_trials
-            return max(best_trials, key=lambda t: t.values[0]) if best_trials else None
+            if best_trials:
+                return max(best_trials, key=lambda t: t.values[0] if t.values else -float('inf'))
+            else:
+                # Fallback: find any completed trial
+                completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+                if completed_trials:
+                    return max(completed_trials, key=lambda t: t.values[0] if t.values else -float('inf'))
+                else:
+                    # Ultimate fallback: any trial at all
+                    if study.trials:
+                        return study.trials[0]
+                    else:
+                        raise RuntimeError("No trials found in study")
         else:
             # Specific date - search ALL trials (not just Pareto optimal)
             # This matches the behavior of the 'found' check
@@ -73,15 +85,47 @@ def _best_trial(
                     dt_idx = datetime.datetime.fromisoformat(trial.user_attrs[_IDX_USR_ATTR_KEY])
                     if dt_idx == dt:
                         matching_trials.append(trial)
-            # Return best of matching trials by first objective
-            return max(matching_trials, key=lambda t: t.values[0]) if matching_trials else None
+            
+            if matching_trials:
+                # Return best of matching trials by first objective
+                return max(matching_trials, key=lambda t: t.values[0] if t.values else -float('inf'))
+            else:
+                # Fallback: use best overall trial if no date match
+                best_trials = study.best_trials
+                if best_trials:
+                    return max(best_trials, key=lambda t: t.values[0] if t.values else -float('inf'))
+                else:
+                    # Last resort: any completed trial
+                    completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+                    if completed_trials:
+                        return max(completed_trials, key=lambda t: t.values[0] if t.values else -float('inf'))
+                    else:
+                        # Ultimate fallback: any trial at all
+                        if study.trials:
+                            return study.trials[0]
+                        else:
+                            raise RuntimeError("No trials found in study")
     
     # Single-objective original logic
     if dt is None:
-        return study.best_trial
+        best_trial = study.best_trial
+        if best_trial is not None:
+            return best_trial
+        else:
+            # Fallback for single-objective when best_trial is None
+            completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE and t.value is not None]
+            if completed_trials:
+                return min(completed_trials, key=lambda t: t.value)
+            elif study.trials:
+                return study.trials[0]
+            else:
+                raise RuntimeError("No trials found in study")
+    
     min_trial = None
     for trial in study.trials:
         if trial.value is None:
+            continue
+        if _IDX_USR_ATTR_KEY not in trial.user_attrs:
             continue
         dt_idx = datetime.datetime.fromisoformat(trial.user_attrs[_IDX_USR_ATTR_KEY])
         if dt_idx == dt:
@@ -91,8 +135,22 @@ def _best_trial(
                 min_trial = trial
             elif min_trial.value > trial.value:
                 min_trial = trial
+    
     if min_trial is None:
-        min_trial = study.best_trial
+        # Fallback when no date-specific trial found
+        best_trial = study.best_trial
+        if best_trial is not None:
+            return best_trial
+        else:
+            # Ultimate fallback: any completed trial
+            completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE and t.value is not None]
+            if completed_trials:
+                return min(completed_trials, key=lambda t: t.value)
+            elif study.trials:
+                return study.trials[0]
+            else:
+                raise RuntimeError("No trials found in study")
+    
     return min_trial
 
 
@@ -486,9 +544,11 @@ class Trainer(Fit):
                     if self._max_train_timeout is None
                     else self._max_train_timeout.total_seconds(),
                 )
+            best_trial = _best_trial(study)
             while (
-                _best_trial(study).values is None
-                or _best_trial(study).values == (_BAD_OUTPUT, -_BAD_OUTPUT)
+                best_trial.values is None
+                or best_trial.values == (_BAD_OUTPUT, -_BAD_OUTPUT)
+                or (len(best_trial.values) > 1 and best_trial.values == (_BAD_OUTPUT, -_BAD_OUTPUT))
             ) and len(study.trials) < 1000:
                 logging.info("Performing extra train")
                 study.optimize(
@@ -499,6 +559,7 @@ class Trainer(Fit):
                     if self._max_train_timeout is None
                     else self._max_train_timeout.total_seconds(),
                 )
+                best_trial = _best_trial(study)  # Update after new trials
 
             train_len = len(df[dt_index < start_test_index])
             test_len = len(
