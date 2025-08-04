@@ -287,16 +287,29 @@ class Trainer(Fit):
         if os.path.exists(sampler_file):
             with open(sampler_file, "rb") as handle:
                 restored_sampler = pickle.load(handle)
-        return optuna.create_study(
-            study_name="wavetrain",
-            storage=storage_name,
-            load_if_exists=True,
-            sampler=restored_sampler,
-            directions=[
-                # optuna.study.StudyDirection.MAXIMIZE,
-                optuna.study.StudyDirection.MINIMIZE,
-            ],
-        )
+        # Try to create/load study with current configuration
+        try:
+            return optuna.create_study(
+                study_name="wavetrain",
+                storage=storage_name,
+                load_if_exists=True,
+                sampler=restored_sampler,
+                directions=[
+                    # optuna.study.StudyDirection.MAXIMIZE,
+                    optuna.study.StudyDirection.MINIMIZE,
+                ],
+            )
+        except ValueError as e:
+            # Handle case where existing study has different directions
+            if "Objective names of loaded study are inconsistent" in str(e) or "directions" in str(e):
+                print(f"Warning: Study configuration mismatch for {column}, using existing study as-is")
+                return optuna.load_study(
+                    study_name="wavetrain",
+                    storage=storage_name,
+                    sampler=restored_sampler,
+                )
+            else:
+                raise
 
     def fit(
         self,
