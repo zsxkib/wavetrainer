@@ -57,8 +57,6 @@ def _best_trial(
     study: optuna.Study, dt: datetime.datetime | None = None
 ) -> optuna.trial.FrozenTrial:
     """Handle both single and multi-objective studies - never returns None"""
-    print(f"Debug: _best_trial called with dt={dt}, study has {len(study.directions)} directions, {len(study.trials)} trials")
-    
     # Handle multi-objective studies first
     if len(study.directions) > 1:
         if dt is None:
@@ -601,12 +599,8 @@ class Trainer(Fit):
                         break
                 if found:
                     last_processed_dt = test_dt
-                    best_trial_for_date = _best_trial(study, dt=test_dt)
-                    print(f"Debug: _best_trial returned {best_trial_for_date} for date {test_dt} (found case)")
-                    if best_trial_for_date is None:
-                        raise RuntimeError(f"_best_trial returned None for date {test_dt} (found case)")
                     _fit(
-                        best_trial_for_date,
+                        _best_trial(study, dt=test_dt),
                         test_df.copy(),
                         test_series,
                         True,
@@ -645,12 +639,8 @@ class Trainer(Fit):
                 else:
                     break
 
-                best_trial_for_date = _best_trial(study, dt=test_dt)
-                print(f"Debug: _best_trial returned {best_trial_for_date} for date {test_dt}")
-                if best_trial_for_date is None:
-                    raise RuntimeError(f"_best_trial returned None for date {test_dt}")
                 value = _fit(
-                    best_trial_for_date,
+                    _best_trial(study, dt=test_dt),
                     test_df.copy(),
                     test_series,
                     True,
